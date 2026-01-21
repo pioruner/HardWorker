@@ -18,6 +18,7 @@ import (
 var iconData []byte
 
 var (
+	macOS          bool
 	windowVisible  = true
 	mainWindow     *giu.MasterWindow
 	showWindow     = make(chan bool, 1)
@@ -95,18 +96,19 @@ func (a *AppState) onExit() {
 }
 
 func main() {
-	// Инициализируем состояние приложения
-	ctx, cancel := context.WithCancel(context.Background())
-	appState = &AppState{
-		ctx:    ctx,
-		cancel: cancel,
-	}
+
 	// На Windows запускаем трей
-	if runtime.GOOS == "windows" {
+	macOS = runtime.GOOS == "darwin"
+
+	if !macOS {
+		// Инициализируем состояние приложения
+		ctx, cancel := context.WithCancel(context.Background())
+		appState = &AppState{
+			ctx:    ctx,
+			cancel: cancel,
+		}
 		go systray.Run(appState.onReady, appState.onExit)
 		log.Println("Запущен системный трей для Windows")
-	} else {
-		log.Println("macOS/Linux: системный трей отключен")
 	}
 
 	// Создаем окно
@@ -139,7 +141,7 @@ func main() {
 				}),
 				giu.MenuItem("Выход").OnClick(func() {
 					log.Println("Выход из программы (GUI)")
-					if runtime.GOOS == "windows" {
+					if !macOS {
 						systray.Quit()
 					}
 					os.Exit(0)
