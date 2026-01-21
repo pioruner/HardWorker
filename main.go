@@ -18,9 +18,12 @@ import (
 var iconData []byte
 
 var (
-	windowVisible = true
-	mainWindow    *giu.MasterWindow
-	showWindow    = make(chan bool, 1)
+	windowVisible  = true
+	mainWindow     *giu.MasterWindow
+	showWindow     = make(chan bool, 1)
+	commandInput   string   // Текущая команда для ввода
+	lastResponse   string   // Последний ответ прибора
+	commandHistory []string // История команд
 )
 
 // Состояние приложения
@@ -107,7 +110,7 @@ func main() {
 	}
 
 	// Создаем окно
-	window := giu.NewMasterWindow("HardWorker", 400, 300, 0)
+	window := giu.NewMasterWindow("HardWorker", 600, 250, 0)
 
 	// Устанавливаем обработчик закрытия окна
 	window.SetCloseCallback(func() bool {
@@ -151,39 +154,29 @@ func main() {
 
 		// Основной интерфейс
 		giu.SingleWindow().Layout(
-			giu.Label("HardWorker"),
+			// Шапка - лейбл АКИП
+			giu.Align(giu.AlignCenter).To(
+				giu.Style().SetFontSize(24).To(giu.Label("АКИП")),
+			),
 			giu.Separator(),
-			giu.Label("Управление подключениями к устройствам"),
 
-			giu.Dummy(0, 20),
-
-			giu.Button("Переподключить устройства").Size(200, 40).OnClick(func() {
-				log.Println("Переподключение из кнопки...")
-			}),
+			// Строка ввода команды - ИСПРАВЛЕНО
+			giu.Row(
+				giu.Style().SetFontSize(20).To(
+					giu.InputText(&commandInput).Size(-200).Hint("Введите SCPI команду...")), // Занимает всё кроме 200px
+				giu.Button("Отправить").Size(190, 26), // Фиксированная ширина
+			),
 
 			giu.Dummy(0, 10),
 
-			giu.Row(
-				giu.Button("Скрыть в трей").Size(120, 30).OnClick(func() {
-					windowVisible = false
-					log.Println("Окно скрыто из кнопки")
-				}),
+			// Подвал: текстовое поле для ответов прибора
+			giu.Label("Последний ответ прибора:"),
+			giu.InputTextMultiline(&lastResponse).
+				Size(-1, 130).
+				Flags(giu.InputTextFlagsReadOnly),
+			//BGColor(giu.Vec4{0.95, 0.95, 0.95, 1.0}), // Серый фон для read-only
 
-				giu.Button("Выход").Size(120, 30).OnClick(func() {
-					log.Println("Выход из программы (кнопка)")
-					if runtime.GOOS == "windows" {
-						systray.Quit()
-					}
-					os.Exit(0)
-				}),
-			),
-
-			giu.Separator(),
-
-			giu.Label("Статус:"),
-			giu.Label("✓ Приложение активно работает"),
-			giu.Label("ОС: "+runtime.GOOS),
-		)
+			giu.Dummy(0, 10))
 	})
 
 }
