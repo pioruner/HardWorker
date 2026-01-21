@@ -122,6 +122,9 @@ func runGUIWindow() {
 		log.Println("Окно скрыто в трей (закрытие на крестик)")
 		// Закрываем окно
 		window.SetShouldClose(true)
+		if macOS {
+			quitApp <- true
+		}
 		return true // Предотвращаем стандартное закрытие
 	})
 
