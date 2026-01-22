@@ -1,90 +1,70 @@
 package tray
 
 import (
-	"context"
 	"log"
-	"time"
 
 	"github.com/getlantern/systray"
 )
 
 // Состояние приложения
-type AppState struct {
-	ctx    context.Context
-	cancel context.CancelFunc
+type TrayData struct {
+	windowVisibility chan bool // Канал для управления окном
+	quitApp          chan bool // Канал для сигнала выхода
+	mToggle          *systray.MenuItem
+	mQuit            *systray.MenuItem
 }
 
-var appState *AppState
+var TD *TrayData
 
-func Tray(macOS bool, icon []byte) {
-	if !macOS {
-		// Инициализируем состояние приложения
-		ctx, cancel := context.WithCancel(context.Background())
-		appState = &AppState{
-			ctx:    ctx,
-			cancel: cancel,
-		}
-		go systray.Run(appState.onReady, appState.onExit)
-		log.Println("Запущен системный трей для Windows")
+func Tray(macOS bool, wV chan bool, qA chan bool, icon []byte) {
+	if macOS {
+		return
 	}
-}
+	TD = &TrayData{
+		windowVisibility: wV,
+		quitApp:          qA,
+	}
 
-func (a *AppState) onReady() {
-	// Устанавливаем иконку в системный трей
-	systray.SetIcon(iconData)
-	log.Println("Иконка установлена в системный трей")
-
-	// Заголовок и тултип
+	//Настройка
+	systray.SetIcon(icon)
 	systray.SetTitle("HardWorker")
 	systray.SetTooltip("Управление устройствами")
 
-	mToggle := systray.AddMenuItem("Показать/скрыть окно", "Переключить видимость окна")
+	//Меню
+	TD.mToggle = systray.AddMenuItem("Показать/скрыть окно", "Переключить видимость окна")
 	systray.AddSeparator()
-	mQuit := systray.AddMenuItem("Выход", "Завершить программу")
+	TD.mQuit = systray.AddMenuItem("Выход", "Завершить программу")
 
-	// Обработка событий в фоне
+	go systray.Run(TD.onReady, TD.onExit)
+	log.Println("Запущен системный трей для Windows")
+}
+
+func (a *TrayData) onReady() {
+	// Обработка событий
 	go func() {
 		for {
 			select {
-			case <-mToggle.ClickedCh:
-				windowVisible = !windowVisible
-
-				if windowVisible {
-					log.Println("Окно показано (из трея)")
-					// Отправляем сигнал создать новое окно
-					select {
-					case needNewWindow <- true:
-					default:
-					}
-				} else {
-					log.Println("Окно скрыто (из трея)")
-				}
-
-			case <-mQuit.ClickedCh:
-				log.Println("Выход из программы (из трея)")
-				// Отправляем сигнал выхода
+			case <-TD.mToggle.ClickedCh:
+				log.Println("Показать/Скрыть UI")
 				select {
-				case quitApp <- true:
+				case TD.windowVisibility <- true:
 				default:
 				}
-				return
 
-			case <-a.ctx.Done():
+			case <-TD.mQuit.ClickedCh:
+				log.Println("Выход из программы")
+				systray.Quit()
 				return
 			}
 		}
 	}()
 }
 
-func (a *AppState) onExit() {
+func (a *TrayData) onExit() {
 	log.Println("Завершение работы приложения...")
-
-	// Отменяем контекст для остановки всех горутин
-	a.cancel()
-
-	// Имитация очистки ресурсов
-	log.Println("Закрытие соединений с устройствами...")
-	time.Sleep(300 * time.Millisecond)
-
+	select {
+	case TD.quitApp <- true:
+	default:
+	}
 	log.Println("Приложение завершено")
 }
