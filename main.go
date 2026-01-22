@@ -22,14 +22,12 @@ var iconData []byte
 var iconPNG []byte
 
 var (
-	macOS          bool
-	windowVisible  = true
-	mainWindow     *giu.MasterWindow
-	toggleWindow   = make(chan bool, 1)
-	quitApp        = make(chan bool, 1) // Канал для сигнала выхода
-	commandInput   string               // Текущая команда для ввода
-	lastResponse   string               // Последний ответ прибора
-	commandHistory []string             // История команд
+	macOS        bool
+	mainWindow   *giu.MasterWindow
+	toggleWindow = make(chan bool, 1)
+	quitApp      = make(chan bool, 1) // Канал для сигнала выхода
+	commandInput string               // Текущая команда для ввода
+	lastResponse string               // Последний ответ прибора
 )
 
 // Функция для создания и запуска окна
@@ -49,7 +47,7 @@ func runGUIWindow() {
 	window.SetCloseCallback(func() bool {
 		// При попытке закрыть окно - скрываем его в трей
 		//windowVisible = false
-		log.Println("Закрытие на крестик")
+		log.Println("Закрытие UI")
 		// Закрываем окно
 		//window.SetShouldClose(true)
 		if macOS {
@@ -65,6 +63,7 @@ func runGUIWindow() {
 		case <-quitApp:
 			log.Println("Получен сигнал выхода, завершение приложения...")
 			window.SetShouldClose(true)
+			quitApp <- true
 			//os.Exit(0)
 			return
 		case <-toggleWindow:
@@ -72,40 +71,32 @@ func runGUIWindow() {
 			window.SetShouldClose(true)
 			return
 		default:
+			// Основной интерфейс
+			giu.SingleWindow().Layout(
+				// Шапка - лейбл АКИП
+				giu.Align(giu.AlignCenter).To(
+					giu.Style().SetFontSize(24).To(giu.Label("АКИП")),
+				),
+				giu.Separator(),
+
+				// Строка ввода команды
+				giu.Row(
+					giu.Style().SetFontSize(20).To(
+						giu.InputText(&commandInput).Size(-200).Hint("Введите SCPI команду...")),
+					giu.Button("Отправить").Size(190, 26),
+				),
+
+				giu.Dummy(0, 10),
+
+				// Подвал: текстовое поле для ответов прибора
+				giu.Label("Последний ответ прибора:"),
+				giu.InputTextMultiline(&lastResponse).
+					Size(-1, 130).
+					Flags(giu.InputTextFlagsReadOnly),
+
+				giu.Dummy(0, 10),
+			)
 		}
-
-		// Проверяем видимость окна
-		//if !windowVisible {
-		// Если окно должно быть скрыто, закрываем его
-		//	window.SetShouldClose(true)
-		//	return
-		//}
-
-		// Основной интерфейс
-		giu.SingleWindow().Layout(
-			// Шапка - лейбл АКИП
-			giu.Align(giu.AlignCenter).To(
-				giu.Style().SetFontSize(24).To(giu.Label("АКИП")),
-			),
-			giu.Separator(),
-
-			// Строка ввода команды
-			giu.Row(
-				giu.Style().SetFontSize(20).To(
-					giu.InputText(&commandInput).Size(-200).Hint("Введите SCPI команду...")),
-				giu.Button("Отправить").Size(190, 26),
-			),
-
-			giu.Dummy(0, 10),
-
-			// Подвал: текстовое поле для ответов прибора
-			giu.Label("Последний ответ прибора:"),
-			giu.InputTextMultiline(&lastResponse).
-				Size(-1, 130).
-				Flags(giu.InputTextFlagsReadOnly),
-
-			giu.Dummy(0, 10),
-		)
 	})
 }
 
