@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/AllenDang/giu"
+	"github.com/pioruner/HardWorker.git/pkg/akip"
 	"github.com/pioruner/HardWorker.git/pkg/tray"
 )
 
@@ -20,6 +21,7 @@ var iconTray []byte
 var iconApp []byte
 
 var (
+	testAkip     = true
 	macOS        bool
 	toggleWindow = make(chan bool, 1)
 	quitApp      = make(chan bool, 1) // Канал для сигнала выхода
@@ -84,22 +86,26 @@ func runGUIWindow() {
 }
 
 func main() {
-	macOS = runtime.GOOS == "darwin" //Check OS
+	if testAkip {
+		println(akip.CMD("192.168.1.70:44331", "STARTBIN"))
+	} else {
+		macOS = runtime.GOOS == "darwin" //Check OS
 
-	tray.Tray(macOS, toggleWindow, quitApp, iconTray) //Create tray icon
+		tray.Tray(macOS, toggleWindow, quitApp, iconTray) //Create tray icon
 
-	runGUIWindow() //UI
+		runGUIWindow() //UI
 
-	for { //Main Cycle
-		select {
-		case <-toggleWindow: //Recall UI
-			log.Println("Запуск GUI окна...")
-			runGUIWindow()
-			log.Println("GUI окно закрыто")
-		case <-quitApp: //Quit App
-			log.Println("Завершение программы...")
-			os.Exit(0)
-		case <-time.After(100 * time.Millisecond): //Pause
+		for { //Main Cycle
+			select {
+			case <-toggleWindow: //Recall UI
+				log.Println("Запуск GUI окна...")
+				runGUIWindow()
+				log.Println("GUI окно закрыто")
+			case <-quitApp: //Quit App
+				log.Println("Завершение программы...")
+				os.Exit(0)
+			case <-time.After(100 * time.Millisecond): //Pause
+			}
 		}
 	}
 }
