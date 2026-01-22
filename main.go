@@ -87,7 +87,7 @@ func runGUIWindow() {
 
 func main() {
 	if testAkip {
-		println(akip.CMD("192.168.1.70:44331", "STARTBIN"))
+		println(string(akip.CMD("192.168.1.70:44331", "STARTBIN")))
 	} else {
 		macOS = runtime.GOOS == "darwin" //Check OS
 
