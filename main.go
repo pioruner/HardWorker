@@ -13,17 +13,14 @@ import (
 	"github.com/pioruner/HardWorker.git/pkg/tray"
 )
 
-// Импортируем иконку в PNG формате
-//
 //go:embed assets/icon.ico
-var iconData []byte
+var iconTray []byte
 
 //go:embed assets/icon.png
-var iconPNG []byte
+var iconApp []byte
 
 var (
 	macOS        bool
-	mainWindow   *giu.MasterWindow
 	toggleWindow = make(chan bool, 1)
 	quitApp      = make(chan bool, 1) // Канал для сигнала выхода
 	commandInput string               // Текущая команда для ввода
@@ -32,67 +29,53 @@ var (
 
 // Функция для создания и запуска окна
 func runGUIWindow() {
-	time.Sleep(100 * time.Millisecond)
-	// Создаем окно
-	window := giu.NewMasterWindow("HardWorker", 600, 250, 0)
-	mainWindow = window // Сохраняем ссылку на главное окно
+	window := giu.NewMasterWindow("HardWorker", 600, 250, 0) // Create main window
 
-	// Устанавливаем иконку окна (простой способ)
-	img, _, err := image.Decode(bytes.NewReader(iconPNG))
+	img, _, err := image.Decode(bytes.NewReader(iconApp)) //Decode icon
 	if err == nil {
-		window.SetIcon(img)
+		window.SetIcon(img) //Set icon
 	}
 
-	// Устанавливаем обработчик закрытия окна
-	window.SetCloseCallback(func() bool {
-		// При попытке закрыть окно - скрываем его в трей
-		//windowVisible = false
+	window.SetCloseCallback(func() bool { //Close callback
 		log.Println("Закрытие UI")
-		// Закрываем окно
-		//window.SetShouldClose(true)
 		if macOS {
-			quitApp <- true
+			quitApp <- true //Mac must close app - no tray control
 		}
 		return true
 	})
 
-	// Запускаем GUI с обработкой внешних событий
 	window.Run(func() {
-		// Проверяем сигнал выхода из приложения
 		select {
-		case <-quitApp:
+		case <-quitApp: //Close UI
 			log.Println("Получен сигнал выхода, завершение приложения...")
 			window.SetShouldClose(true)
-			quitApp <- true
-			//os.Exit(0)
+			quitApp <- true //Exit main cycle
 			return
-		case <-toggleWindow:
+
+		case <-toggleWindow: //Hide to tray
 			log.Println("Получен сигнал трея, прячем UI...")
-			window.SetShouldClose(true)
+			window.SetShouldClose(true) //Drop UI
 			return
+
 		default:
-			// Основной интерфейс
-			giu.SingleWindow().Layout(
-				// Шапка - лейбл АКИП
+			giu.SingleWindow().Layout( //Main UI
 				giu.Align(giu.AlignCenter).To(
-					giu.Style().SetFontSize(24).To(giu.Label("АКИП")),
+					giu.Style().SetFontSize(24).To(giu.Label("АКИП")), //Main Lable
 				),
 				giu.Separator(),
 
-				// Строка ввода команды
 				giu.Row(
 					giu.Style().SetFontSize(20).To(
-						giu.InputText(&commandInput).Size(-200).Hint("Введите SCPI команду...")),
-					giu.Button("Отправить").Size(190, 26),
+						giu.InputText(&commandInput).Size(-200).Hint("Введите SCPI команду...")), //CMD for send
+					giu.Button("Отправить").Size(190, 26), //Send CMD
 				),
 
 				giu.Dummy(0, 10),
 
-				// Подвал: текстовое поле для ответов прибора
 				giu.Label("Последний ответ прибора:"),
-				giu.InputTextMultiline(&lastResponse).
-					Size(-1, 130).
-					Flags(giu.InputTextFlagsReadOnly),
+				giu.InputTextMultiline(&lastResponse). //Response for CMD
+									Size(-1, 130).
+									Flags(giu.InputTextFlagsReadOnly),
 
 				giu.Dummy(0, 10),
 			)
@@ -101,24 +84,22 @@ func runGUIWindow() {
 }
 
 func main() {
-	macOS = runtime.GOOS == "darwin"
+	macOS = runtime.GOOS == "darwin" //Check OS
 
-	tray.Tray(macOS, toggleWindow, quitApp, iconData)
+	tray.Tray(macOS, toggleWindow, quitApp, iconTray) //Create tray icon
 
-	runGUIWindow()
-	// Главный цикл управления окнами
-	for {
-		// Проверяем сигнал выхода
+	runGUIWindow() //UI
+
+	for { //Main Cycle
 		select {
-		case <-toggleWindow:
+		case <-toggleWindow: //Recall UI
 			log.Println("Запуск GUI окна...")
 			runGUIWindow()
 			log.Println("GUI окно закрыто")
-		case <-quitApp:
+		case <-quitApp: //Quit App
 			log.Println("Завершение программы...")
 			os.Exit(0)
-		case <-time.After(100 * time.Millisecond):
-			//pause
+		case <-time.After(100 * time.Millisecond): //Pause
 		}
 	}
 }
