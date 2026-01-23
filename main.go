@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	_ "embed"
+	"fmt"
 	"image"
 	"log"
 	"os"
@@ -21,18 +22,20 @@ var iconTray []byte
 var iconApp []byte
 
 var (
-	testAkip     = true
+	testAkip     = false
 	macOS        bool
 	toggleWindow = make(chan bool, 1)
 	quitApp      = make(chan bool, 1) // Канал для сигнала выхода
 	commandInput string               // Текущая команда для ввода
 	lastResponse string               // Последний ответ прибора
+
+	linedata  []int8 = nil
+	lineTicks []giu.PlotTicker
 )
 
 func runGUIWindow() {
-	window := giu.NewMasterWindow("HardWorker", 600, 250, 0) // Create main window
-
-	img, _, err := image.Decode(bytes.NewReader(iconApp)) //Decode icon
+	window := giu.NewMasterWindow("HardWorker", 1000, 800, 0) // Create main window
+	img, _, err := image.Decode(bytes.NewReader(iconApp))     //Decode icon
 	if err == nil {
 		window.SetIcon(img) //Set icon
 	}
@@ -60,28 +63,44 @@ func runGUIWindow() {
 
 		default:
 			giu.SingleWindow().Layout( //Main UI
+
+				giu.Plot("AKIP Graph").Size(-1, 600).AxisLimits(0, 1000, -150, 150, giu.ConditionOnce).XTicks(lineTicks, false).Plots(
+					giu.Line("", UtoF(linedata)),
+				),
+
 				giu.Align(giu.AlignCenter).To(
-					giu.Style().SetFontSize(24).To(giu.Label("АКИП")), //Main Lable
+					//giu.Style().SetFontSize(24).To(giu.Label("АКИП")), //Main Lable
+					giu.Label("АКИП"),
 				),
 				giu.Separator(),
 
 				giu.Row(
-					giu.Style().SetFontSize(20).To(
-						giu.InputText(&commandInput).Size(-200).Hint("Введите SCPI команду...")), //CMD for send
-					giu.Button("Отправить").Size(190, 26), //Send CMD
+					//giu.Style().SetFontSize(20).To(giu.InputText(&commandInput).Size(-200).Hint("Введите SCPI команду...")), //CMD for send
+					giu.InputText(&commandInput).Size(-200).Hint("Введите SCPI команду..."),
+					giu.Button("Отправить").Size(190, 26).OnClick(sendCMD), //Send CMD
 				),
 
 				giu.Dummy(0, 10),
 
 				giu.Label("Последний ответ прибора:"),
-				giu.InputTextMultiline(&lastResponse). //Response for CMD
-									Size(-1, 130).
-									Flags(giu.InputTextFlagsReadOnly),
+				giu.InputTextMultiline(&lastResponse).Size(-1, -1).Flags(giu.InputTextFlagsReadOnly), //Response for CMD
 
 				giu.Dummy(0, 10),
 			)
 		}
 	})
+}
+
+func sendCMD() {
+	resp := akip.CMD("192.168.1.70:44331", commandInput)
+	if commandInput == "STARTBIN" {
+		lastResponse = fmt.Sprintf("%X", resp[:len(resp)-2])
+		linedata = BtoI(resp[:1000])
+	} else {
+		cleanResp := bytes.ReplaceAll(resp, []byte{0}, []byte{})
+		lastResponse = fmt.Sprintf("%s", cleanResp[:len(cleanResp)-2])
+	}
+	giu.Update()
 }
 
 func main() {
@@ -91,6 +110,10 @@ func main() {
 		macOS = runtime.GOOS == "darwin" //Check OS
 
 		tray.Tray(macOS, toggleWindow, quitApp, iconTray) //Create tray icon
+
+		for i := 0; i < 1000; i += 1 {
+			lineTicks = append(lineTicks, giu.PlotTicker{Position: float64(i), Label: fmt.Sprintf("P%d", i)})
+		}
 
 		runGUIWindow() //UI
 
@@ -107,4 +130,20 @@ func main() {
 			}
 		}
 	}
+}
+
+func UtoF(data []int8) []float64 {
+	result := make([]float64, len(data))
+	for i, v := range data {
+		result[i] = float64(v)
+	}
+	return result
+}
+
+func BtoI(data []byte) []int8 {
+	result := make([]int8, len(data))
+	for i, v := range data {
+		result[i] = int8(v)
+	}
+	return result
 }
