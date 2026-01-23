@@ -20,6 +20,9 @@ var iconTray []byte
 //go:embed assets/icon.png
 var iconApp []byte
 
+//go:embed assets/inter.ttf
+var fontI []byte
+
 var (
 	macOS        bool
 	toggleWindow = make(chan bool, 1)
@@ -37,6 +40,11 @@ func runGUIWindow() {
 		window.SetIcon(img) //Set icon
 	}
 
+	font := giu.Context.FontAtlas.AddFontFromBytes("inter", fontI, 14)
+	style := giu.Style()
+	style.SetFont(font)
+	window.SetStyle(style)
+	_, h := giu.GetFramePadding()
 	window.Run(func() {
 		select {
 		case <-quitApp: //Close UI
@@ -60,12 +68,12 @@ func runGUIWindow() {
 					giu.Label("АКИП"),
 				),
 				giu.Separator(),
-
-				giu.Row(
-					//giu.Style().SetFontSize(20).To(giu.InputText(&commandInput).Size(-200).Hint("Введите SCPI команду...")), //CMD for send
-					giu.InputText(&commandInput).Size(-200).Hint("Введите SCPI команду..."),
-					giu.Button("Отправить").Size(190, 26).OnClick(sendCMD), //Send CMD
-				),
+				giu.Child().Size(giu.Auto, (14+h*2+4)*1.5).Border(false).Layout(
+					giu.Row(
+						//giu.Style().SetFontSize(20).To(giu.InputText(&commandInput).Size(-200).Hint("Введите SCPI команду...")), //CMD for send
+						giu.InputText(&commandInput).Size(-200).Hint("Введите SCPI команду..."),
+						giu.Button("Отправить").Size(190, giu.Auto).OnClick(sendCMD), //Send CMD
+					)),
 
 				giu.Dummy(0, 10),
 
@@ -80,14 +88,18 @@ func runGUIWindow() {
 
 func sendCMD() {
 	resp := akip.CMD("192.168.1.70:44331", commandInput)
-	if commandInput == "STARTBIN" {
-		lastResponse = fmt.Sprintf("%X", resp[:len(resp)-2])
-		linedata = BtoI(resp[:1000])
+	if len(resp) > 0 {
+		if commandInput == "STARTBIN" {
+			lastResponse = fmt.Sprintf("%X", resp[:len(resp)-2])
+			linedata = BtoI(resp[:1000])
+		} else {
+			cleanResp := bytes.ReplaceAll(resp, []byte{0}, []byte{})
+			lastResponse = fmt.Sprintf("%s", cleanResp[:len(cleanResp)-2])
+		}
+		giu.Update()
 	} else {
-		cleanResp := bytes.ReplaceAll(resp, []byte{0}, []byte{})
-		lastResponse = fmt.Sprintf("%s", cleanResp[:len(cleanResp)-2])
+		lastResponse = "nil"
 	}
-	giu.Update()
 }
 
 func main() {
