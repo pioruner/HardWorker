@@ -35,7 +35,7 @@ var (
 )
 
 func runGUIWindow() {
-	window := giu.NewMasterWindow("HardWorker", 1000, 800, 0) // Create main window
+	window := giu.NewMasterWindow("HardWorker", 1000, 450, 0) // Create main window
 	img, _, err := image.Decode(bytes.NewReader(iconApp))     //Decode icon
 	if err == nil {
 		window.SetIcon(img) //Set icon
@@ -60,13 +60,8 @@ func runGUIWindow() {
 		default:
 			giu.SingleWindow().Layout( //Main UI
 				giu.Align(giu.AlignCenter).To(
-					giu.Style().SetFontSize(24).To(giu.Label("АКИП")), //Main Lable
+					giu.Style().SetFontSize(16).To(giu.Label("АКИП")), //Main Lable
 				),
-				giu.Style().SetFontSize(14).To(
-					giu.Plot(" ").Size(int(giu.Auto), 600).AxisLimits(0, 100, -150, 150, giu.ConditionOnce).Plots(
-						giu.Line("", UtoF(linedata)),
-					)),
-
 				giu.Separator(),
 				giu.Child().Size(giu.Auto, (14+(h*2)+2)*macMult).Border(false).Layout(
 					giu.Row(
@@ -77,10 +72,14 @@ func runGUIWindow() {
 
 				giu.Dummy(0, 5),
 
-				giu.Label("Последний ответ прибора:"),
-				giu.InputTextMultiline(&lastResponse).Size(giu.Auto, -5).Flags(giu.InputTextFlagsReadOnly), //Response for CMD
+				//giu.Label("Последний ответ прибора:"),
+				giu.InputText(&lastResponse).Size(giu.Auto).Flags(giu.InputTextFlagsReadOnly).Hint("Последний ответ прибора..."), //Response for CMD
 
 				giu.Dummy(0, 5),
+				giu.Style().SetFontSize(10).To(
+					giu.Plot("Осцилограмма").Size(int(giu.Auto), 300).AxisLimits(0, 100, -150, 150, giu.ConditionOnce).Plots(
+						giu.Line("", UtoF(linedata)),
+					)),
 			)
 		}
 	})
