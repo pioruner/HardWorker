@@ -59,15 +59,14 @@ func runGUIWindow() {
 
 		default:
 			giu.SingleWindow().Layout( //Main UI
-				giu.Style().SetFontSize(10).To(
-					giu.Plot("AKIP Graph").Size(-10, 600).AxisLimits(0, 100, -150, 150, giu.ConditionOnce).Plots(
+				giu.Align(giu.AlignCenter).To(
+					giu.Style().SetFontSize(24).To(giu.Label("АКИП")), //Main Lable
+				),
+				giu.Style().SetFontSize(14).To(
+					giu.Plot(" ").Size(int(giu.Auto), 600).AxisLimits(0, 100, -150, 150, giu.ConditionOnce).Plots(
 						giu.Line("", UtoF(linedata)),
 					)),
 
-				giu.Align(giu.AlignCenter).To(
-					//giu.Style().SetFontSize(24).To(giu.Label("АКИП")), //Main Lable
-					giu.Label("АКИП"),
-				),
 				giu.Separator(),
 				giu.Child().Size(giu.Auto, (14+(h*2)+2)*macMult).Border(false).Layout(
 					giu.Row(
@@ -76,12 +75,12 @@ func runGUIWindow() {
 						giu.Button("Отправить").Size(190, giu.Auto).OnClick(sendCMD), //Send CMD
 					)),
 
-				giu.Dummy(0, 10),
+				giu.Dummy(0, 5),
 
 				giu.Label("Последний ответ прибора:"),
-				giu.InputTextMultiline(&lastResponse).Size(-1, -1).Flags(giu.InputTextFlagsReadOnly), //Response for CMD
+				giu.InputTextMultiline(&lastResponse).Size(giu.Auto, -5).Flags(giu.InputTextFlagsReadOnly), //Response for CMD
 
-				giu.Dummy(0, 10),
+				giu.Dummy(0, 5),
 			)
 		}
 	})
