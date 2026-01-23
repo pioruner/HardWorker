@@ -5,7 +5,6 @@ import (
 	_ "embed"
 	"fmt"
 	"image"
-	"log"
 	"os"
 	"runtime"
 	"time"
@@ -22,15 +21,13 @@ var iconTray []byte
 var iconApp []byte
 
 var (
-	testAkip     = false
 	macOS        bool
 	toggleWindow = make(chan bool, 1)
 	quitApp      = make(chan bool, 1) // Канал для сигнала выхода
 	commandInput string               // Текущая команда для ввода
 	lastResponse string               // Последний ответ прибора
 
-	linedata  []int8 = nil
-	lineTicks []giu.PlotTicker
+	linedata []int8 = nil
 )
 
 func runGUIWindow() {
@@ -40,31 +37,21 @@ func runGUIWindow() {
 		window.SetIcon(img) //Set icon
 	}
 
-	window.SetCloseCallback(func() bool { //Close callback
-		log.Println("Закрытие UI")
-		if macOS {
-			quitApp <- true //Mac must close app - no tray control
-		}
-		return true
-	})
-
 	window.Run(func() {
 		select {
 		case <-quitApp: //Close UI
-			log.Println("Получен сигнал выхода, завершение приложения...")
 			window.SetShouldClose(true)
 			quitApp <- true //Exit main cycle
 			return
 
 		case <-toggleWindow: //Hide to tray
-			log.Println("Получен сигнал трея, прячем UI...")
 			window.SetShouldClose(true) //Drop UI
 			return
 
 		default:
 			giu.SingleWindow().Layout( //Main UI
 
-				giu.Plot("AKIP Graph").Size(-1, 600).AxisLimits(0, 1000, -150, 150, giu.ConditionOnce).XTicks(lineTicks, false).Plots(
+				giu.Plot("AKIP Graph").Size(-1, 600).AxisLimits(0, 1000, -150, 150, giu.ConditionOnce).Plots(
 					giu.Line("", UtoF(linedata)),
 				),
 
@@ -104,30 +91,23 @@ func sendCMD() {
 }
 
 func main() {
-	if testAkip {
-		println(string(akip.CMD("192.168.1.70:44331", "STARTBIN")))
-	} else {
-		macOS = runtime.GOOS == "darwin" //Check OS
+	macOS = runtime.GOOS == "darwin" //Check OS
 
-		tray.Tray(macOS, toggleWindow, quitApp, iconTray) //Create tray icon
+	if !macOS {
+		tray.Tray(toggleWindow, quitApp, iconTray) //Create tray icon
+	}
 
-		for i := 0; i < 1000; i += 1 {
-			lineTicks = append(lineTicks, giu.PlotTicker{Position: float64(i), Label: fmt.Sprintf("P%d", i)})
-		}
-
-		runGUIWindow() //UI
-
-		for { //Main Cycle
-			select {
-			case <-toggleWindow: //Recall UI
-				log.Println("Запуск GUI окна...")
-				runGUIWindow()
-				log.Println("GUI окно закрыто")
-			case <-quitApp: //Quit App
-				log.Println("Завершение программы...")
-				os.Exit(0)
-			case <-time.After(100 * time.Millisecond): //Pause
+	toggleWindow <- true
+	for { //Main Cycle
+		select {
+		case <-toggleWindow: //Recall UI
+			runGUIWindow()
+			if macOS {
+				quitApp <- true
 			}
+		case <-quitApp: //Quit App
+			os.Exit(0)
+		case <-time.After(100 * time.Millisecond): //Pause
 		}
 	}
 }

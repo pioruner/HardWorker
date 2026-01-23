@@ -17,10 +17,7 @@ type TrayData struct {
 
 var TD *TrayData
 
-func Tray(macOS bool, wV chan bool, qA chan bool, icon []byte) {
-	if macOS {
-		return
-	}
+func Tray(wV chan bool, qA chan bool, icon []byte) {
 	TD = &TrayData{
 		windowVisibility: wV,
 		quitApp:          qA,
@@ -47,10 +44,7 @@ func (a *TrayData) onReady() {
 			select {
 			case <-TD.mToggle.ClickedCh:
 				log.Println("Показать/Скрыть UI")
-				select {
-				case TD.windowVisibility <- true:
-				default:
-				}
+				TD.windowVisibility <- true
 
 			case <-TD.mQuit.ClickedCh:
 				log.Println("Выход из программы")
