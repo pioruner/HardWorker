@@ -1,24 +1,12 @@
-package main
+package ui
 
 import (
 	"bytes"
-	_ "embed"
 	"image"
 	"log"
-	"os"
-	"runtime"
-	"time"
 
 	"github.com/AllenDang/giu"
-	"github.com/pioruner/HardWorker.git/pkg/akip"
-	"github.com/pioruner/HardWorker.git/pkg/tray"
 )
-
-//go:embed assets/icon.ico
-var iconTray []byte
-
-//go:embed assets/icon.png
-var iconApp []byte
 
 var (
 	testAkip     = true
@@ -28,6 +16,8 @@ var (
 	commandInput string               // Текущая команда для ввода
 	lastResponse string               // Последний ответ прибора
 )
+
+var iconApp []byte
 
 func runGUIWindow() {
 	window := giu.NewMasterWindow("HardWorker", 600, 250, 0) // Create main window
@@ -82,29 +72,4 @@ func runGUIWindow() {
 			)
 		}
 	})
-}
-
-func main() {
-	if testAkip {
-		println(string(akip.CMD("192.168.1.70:44331", "STARTBIN")))
-	} else {
-		macOS = runtime.GOOS == "darwin" //Check OS
-
-		tray.Tray(macOS, toggleWindow, quitApp, iconTray) //Create tray icon
-
-		runGUIWindow() //UI
-
-		for { //Main Cycle
-			select {
-			case <-toggleWindow: //Recall UI
-				log.Println("Запуск GUI окна...")
-				runGUIWindow()
-				log.Println("GUI окно закрыто")
-			case <-quitApp: //Quit App
-				log.Println("Завершение программы...")
-				os.Exit(0)
-			case <-time.After(100 * time.Millisecond): //Pause
-			}
-		}
-	}
 }
