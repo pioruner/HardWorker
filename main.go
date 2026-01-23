@@ -25,10 +25,11 @@ var fontI []byte
 
 var (
 	macOS        bool
-	toggleWindow = make(chan bool, 1)
-	quitApp      = make(chan bool, 1) // Канал для сигнала выхода
-	commandInput string               // Текущая команда для ввода
-	lastResponse string               // Последний ответ прибора
+	macMult      float32 = 1.6
+	toggleWindow         = make(chan bool, 1)
+	quitApp              = make(chan bool, 1) // Канал для сигнала выхода
+	commandInput string                       // Текущая команда для ввода
+	lastResponse string                       // Последний ответ прибора
 
 	linedata []int8 = nil
 )
@@ -58,17 +59,17 @@ func runGUIWindow() {
 
 		default:
 			giu.SingleWindow().Layout( //Main UI
-
-				giu.Plot("AKIP Graph").Size(-1, 600).AxisLimits(0, 1000, -150, 150, giu.ConditionOnce).Plots(
-					giu.Line("", UtoF(linedata)),
-				),
+				giu.Style().SetFontSize(10).To(
+					giu.Plot("AKIP Graph").Size(-10, 600).AxisLimits(0, 100, -150, 150, giu.ConditionOnce).Plots(
+						giu.Line("", UtoF(linedata)),
+					)),
 
 				giu.Align(giu.AlignCenter).To(
 					//giu.Style().SetFontSize(24).To(giu.Label("АКИП")), //Main Lable
 					giu.Label("АКИП"),
 				),
 				giu.Separator(),
-				giu.Child().Size(giu.Auto, (14+h*2+4)*1.5).Border(false).Layout(
+				giu.Child().Size(giu.Auto, (14+(h*2)+2)*macMult).Border(false).Layout(
 					giu.Row(
 						//giu.Style().SetFontSize(20).To(giu.InputText(&commandInput).Size(-200).Hint("Введите SCPI команду...")), //CMD for send
 						giu.InputText(&commandInput).Size(-200).Hint("Введите SCPI команду..."),
@@ -107,6 +108,7 @@ func main() {
 
 	if !macOS {
 		tray.Tray(toggleWindow, quitApp, iconTray) //Create tray icon
+		macMult = 1
 	}
 
 	toggleWindow <- true
