@@ -25,17 +25,17 @@ var fontI []byte
 
 var (
 	macOS        bool
-	macMult      float32 = 1.6
+	macMult      float32 = 1 //1.6
 	toggleWindow         = make(chan bool, 1)
 	quitApp              = make(chan bool, 1) // Канал для сигнала выхода
-	commandInput string                       // Текущая команда для ввода
+	commandInput string  = "STARTBIN"         // Текущая команда для ввода
 	lastResponse string                       // Последний ответ прибора
 
 	linedata []int8 = nil
 )
 
 func runGUIWindow() {
-	window := giu.NewMasterWindow("HardWorker", 1000, 450, 0) // Create main window
+	window := giu.NewMasterWindow("HardWorker", 1000, 450, 0) // Create main window. giu.MasterWindowFlagsMaximized
 	img, _, err := image.Decode(bytes.NewReader(iconApp))     //Decode icon
 	if err == nil {
 		window.SetIcon(img) //Set icon
