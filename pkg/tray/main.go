@@ -4,24 +4,24 @@ import (
 	"log"
 
 	"github.com/getlantern/systray"
+	"github.com/pioruner/HardWorker.git/pkg/app"
 )
 
 // Состояние приложения
 type TrayData struct {
-	windowVisibility chan bool // Канал для управления окном
-	quitApp          chan bool // Канал для сигнала выхода
-	mToggle          *systray.MenuItem
-	mQuit            *systray.MenuItem
-	icon             []byte
+	mToggle *systray.MenuItem
+	mQuit   *systray.MenuItem
+	icon    []byte
 }
 
 var TD *TrayData
 
-func Tray(wV chan bool, qA chan bool, icon []byte) {
+func Tray(icon []byte) {
+	if app.MacOS {
+		return
+	}
 	TD = &TrayData{
-		windowVisibility: wV,
-		quitApp:          qA,
-		icon:             icon,
+		icon: icon,
 	}
 
 	go systray.Run(TD.onReady, TD.onExit)
@@ -43,23 +43,21 @@ func (a *TrayData) onReady() {
 		for {
 			select {
 			case <-TD.mToggle.ClickedCh:
-				log.Println("Показать/Скрыть UI")
-				TD.windowVisibility <- true
-
+				if app.State.Gui {
+					app.CloseGUI <- struct{}{}
+				} else {
+					app.Event <- app.EventToggleGUI
+				}
 			case <-TD.mQuit.ClickedCh:
-				log.Println("Выход из программы")
+				if app.State.Gui {
+					app.CloseGUI <- struct{}{}
+				}
 				systray.Quit()
+				app.Event <- app.EventQuit
 				return
 			}
 		}
 	}()
 }
 
-func (a *TrayData) onExit() {
-	log.Println("Завершение работы приложения...")
-	select {
-	case TD.quitApp <- true:
-	default:
-	}
-	log.Println("Приложение завершено")
-}
+func (a *TrayData) onExit() {}
