@@ -14,7 +14,7 @@ var (
 )
 
 func init() {
-	akiper = akip.New("192.168.1.70:44331")
+	akiper = akip.New("192.168.0.100:3000")
 }
 
 func close() bool {

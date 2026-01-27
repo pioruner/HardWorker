@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"time"
@@ -28,23 +29,35 @@ func (ak *AkipW) sendSCPI(addr, cmd string, timeout time.Duration) ([]byte, erro
 	}
 	defer conn.Close()
 
-	// write timeout
+	// write
 	_ = conn.SetWriteDeadline(time.Now().Add(timeout))
-	_, err = conn.Write([]byte(cmd + "\r\n"))
-	if err != nil {
+	if _, err := conn.Write([]byte(cmd + "\r\n")); err != nil {
 		return nil, err
 	}
 
-	// read timeout
+	// read header (12 bytes)
 	_ = conn.SetReadDeadline(time.Now().Add(timeout))
 
-	buf := make([]byte, 8192)
-	n, err := conn.Read(buf)
-	if err != nil {
+	header := make([]byte, 12)
+	if _, err := io.ReadFull(conn, header); err != nil {
 		return nil, err
 	}
 
-	return buf[:n], nil
+	// payload size is in first 2 bytes
+	size := binary.LittleEndian.Uint16(header[0:2])
+
+	// read payload
+	payload := make([]byte, size)
+	if _, err := io.ReadFull(conn, payload); err != nil {
+		return nil, err
+	}
+
+	// если нужен весь пакет целиком
+	packet := make([]byte, 0, 12+len(payload))
+	packet = append(packet, header...)
+	packet = append(packet, payload...)
+
+	return packet, nil
 }
 
 func (ak *AkipW) sendCMD() {
@@ -67,6 +80,7 @@ func (ak *AkipW) sendCMD() {
 		// рабочие данные отдельно
 		if len(resp) > 0 {
 			ak.linedata, _ = ak.binUnpuck(resp, true)
+			log.Printf("SIZE: %d , WAVE: % X", len(resp), resp)
 		} else {
 			// текстовый SCPI-ответ
 			clean := bytes.TrimRight(resp, "\x00\r\n")
@@ -83,7 +97,7 @@ func (ak *AkipW) binUnpuck(buf []byte, ch1 bool) ([]int8, float64) {
 	log.Println(size)
 
 	dataBuf := buf[12:size]
-	log.Printf("Осцилограмма: % X", dataBuf)
+	//log.Printf("Осцилограмма: % X", dataBuf)
 
 	ch1_index := bytes.Index(dataBuf, []byte{0x43, 0x48, 0x31})
 	log.Printf("CH1 Index: %d", ch1_index)
@@ -100,16 +114,17 @@ func (ak *AkipW) binUnpuck(buf []byte, ch1 bool) ([]int8, float64) {
 
 func (ak *AkipW) chanelUnpuck(buf []byte, index int) ([]int8, float64) {
 	nData := int(binary.LittleEndian.Uint16(buf[index+15 : index+17]))
-	hMove := int8(binary.LittleEndian.Uint16(buf[index+31 : index+33]))
+	log.Printf("NDATA: %d", nData)
+	hMove := binary.LittleEndian.Uint16(buf[index+31 : index+33])
+	log.Printf("hMove: %d", hMove)
 	dt := TimeScale[buf[index+27]]
-	shift := int(buf[index+59])
+	log.Printf("dT: %f", dt)
+	shift := index + 59
+	log.Printf("shift: %d", shift)
 	var wave = make([]int8, nData)
 	for i := 0; i < nData; i++ {
-		if shift+2 > len(buf) {
-			return nil, dt
-		}
-		wave[i] = int8(binary.LittleEndian.Uint16(buf[shift:shift+2])) + hMove
+		wave[i] = int8(binary.LittleEndian.Uint16(buf[shift:shift+2]) + hMove)
 		shift += 2
 	}
-	return wave[len(wave):], dt
+	return wave[len(wave)/2:], dt
 }
