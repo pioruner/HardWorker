@@ -1,8 +1,6 @@
 package tray
 
 import (
-	"log"
-
 	"github.com/getlantern/systray"
 	"github.com/pioruner/HardWorker.git/pkg/app"
 )
@@ -25,7 +23,6 @@ func Tray(icon []byte) {
 	}
 
 	go systray.Run(TD.onReady, TD.onExit)
-	log.Println("Запущен системный трей для Windows")
 }
 
 func (a *TrayData) onReady() {
