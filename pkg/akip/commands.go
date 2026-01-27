@@ -2,7 +2,9 @@ package akip
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
+	"log"
 	"net"
 	"time"
 
@@ -64,7 +66,7 @@ func (ak *AkipW) sendCMD() {
 
 		// рабочие данные отдельно
 		if len(resp) > 0 {
-			ak.linedata = BtoI(resp[:1000])
+			ak.linedata, _ = ak.binUnpuck(resp, true)
 		} else {
 			// текстовый SCPI-ответ
 			clean := bytes.TrimRight(resp, "\x00\r\n")
@@ -73,4 +75,41 @@ func (ak *AkipW) sendCMD() {
 
 		giu.Update()
 	}
+}
+
+func (ak *AkipW) binUnpuck(buf []byte, ch1 bool) ([]int8, float64) {
+	size := binary.LittleEndian.Uint16(buf[0:2])
+	log.Print("Размер осцилограммы: ")
+	log.Println(size)
+
+	dataBuf := buf[12:size]
+	log.Printf("Осцилограмма: % X", dataBuf)
+
+	ch1_index := bytes.Index(dataBuf, []byte{0x43, 0x48, 0x31})
+	log.Printf("CH1 Index: %d", ch1_index)
+	ch2_index := bytes.Index(dataBuf, []byte{0x43, 0x48, 0x32})
+	log.Printf("CH2 Index: %d", ch2_index)
+
+	if ch1 {
+		return ak.chanelUnpuck(dataBuf, ch1_index)
+	} else {
+		return ak.chanelUnpuck(dataBuf, ch2_index)
+	}
+
+}
+
+func (ak *AkipW) chanelUnpuck(buf []byte, index int) ([]int8, float64) {
+	nData := int(binary.LittleEndian.Uint16(buf[index+15 : index+17]))
+	hMove := int8(binary.LittleEndian.Uint16(buf[index+31 : index+33]))
+	dt := TimeScale[buf[index+27]]
+	shift := int(buf[index+59])
+	var wave = make([]int8, nData)
+	for i := 0; i < nData; i++ {
+		if shift+2 > len(buf) {
+			return nil, dt
+		}
+		wave[i] = int8(binary.LittleEndian.Uint16(buf[shift:shift+2])) + hMove
+		shift += 2
+	}
+	return wave[len(wave):], dt
 }
