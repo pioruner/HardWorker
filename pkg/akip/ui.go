@@ -8,7 +8,7 @@ type AkipW struct {
 	commandInput string // Текущая команда для ввода
 	lastResponse string // Последний ответ прибора
 	linedata     []int8
-	clicked      func()
+	plotData     []float64
 }
 
 /*
@@ -54,7 +54,7 @@ func (ak *AkipW) UI() giu.Layout {
 		giu.Dummy(0, 5),
 		giu.Style().SetFontSize(10).To(
 			giu.Plot("Осцилограмма").Size(int(giu.Auto), 300).AxisLimits(0, 1550, -150, 150, giu.ConditionOnce).Plots(
-				giu.Line("", UtoF(ak.linedata)),
+				giu.Line("", UtoF(ak.linedata)), //ak.plotData),
 			)),
 	}
 }

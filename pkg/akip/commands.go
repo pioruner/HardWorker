@@ -19,6 +19,7 @@ import (
 //STARTBIN
 
 func (ak *AkipW) sendSCPI(addr, cmd string, timeout time.Duration) ([]byte, error) {
+	return exData, nil
 	dialer := net.Dialer{
 		Timeout: timeout,
 	}
