@@ -53,7 +53,7 @@ func (ak *AkipW) UI() giu.Layout {
 
 		giu.Dummy(0, 5),
 		giu.Style().SetFontSize(10).To(
-			giu.Plot("Осцилограмма").Size(int(giu.Auto), 300).AxisLimits(0, 1550, -150, 150, giu.ConditionOnce).Plots(
+			giu.Plot("Осцилограмма").Size(-1, 300).AxisLimits(0, 1550, -150, 150, giu.ConditionAlways).Plots(
 				giu.Line("", UtoF(ak.linedata)), //ak.plotData),
 			)),
 	}
