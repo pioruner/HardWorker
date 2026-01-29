@@ -10,11 +10,13 @@ import (
 )
 
 var (
-	akiper *akip.AkipW
+	akiper   *akip.AkipW
+	new_akip *akip.AkipUI
 )
 
 func init() {
 	akiper = akip.New("192.168.0.100:3000")
+	new_akip = akip.Init()
 }
 
 func close() bool {
@@ -26,8 +28,8 @@ func close() bool {
 
 func GUI(iconApp []byte, fontI []byte) {
 	app.State.Gui = true
-	window := giu.NewMasterWindow("HardWorker", 1000, 450, 0) // Create main window. giu.MasterWindowFlagsMaximized
-	img, _, err := image.Decode(bytes.NewReader(iconApp))     //Decode icon
+	window := giu.NewMasterWindow("HardWorker", 1000, 450, giu.MasterWindowFlagsMaximized) // Create main window. giu.MasterWindowFlagsMaximized
+	img, _, err := image.Decode(bytes.NewReader(iconApp))                                  //Decode icon
 	if err == nil {
 		window.SetIcon(img) //Set icon
 	}
@@ -46,7 +48,8 @@ func GUI(iconApp []byte, fontI []byte) {
 
 		default:
 			giu.SingleWindow().Layout( //Main UI
-				akiper,
+				//akiper,
+				new_akip,
 			)
 		}
 	})
