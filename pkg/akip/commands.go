@@ -74,16 +74,10 @@ func (ak *AkipW) sendCMD() {
 	}
 
 	if ak.commandInput == "STARTBIN" {
-		// бинарь → hex
-		//ak.lastResponse = fmt.Sprintf("% X", resp)
-
-		// рабочие данные отдельно
 		if len(resp) > 0 {
 			ak.linedata, _ = ak.binUnpuck(resp, true)
 			ak.plotData = UtoF(ak.linedata)
-			//log.Printf("SIZE: %d , WAVE: % X", len(resp), resp)
 		} else {
-			// текстовый SCPI-ответ
 			clean := bytes.TrimRight(resp, "\x00\r\n")
 			ak.lastResponse = string(clean)
 		}

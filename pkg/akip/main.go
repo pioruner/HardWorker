@@ -4,6 +4,11 @@ func (ak *AkipW) send() {
 	go ak.sendCMD()
 }
 
+func (ak *AkipW) test() {
+	ak.commandInput = "STARTBIN"
+	ak.send()
+}
+
 func UtoF(data []int8) []float64 {
 	result := make([]float64, len(data))
 	for i, v := range data {
