@@ -1,7 +1,9 @@
 package akip
 
 import (
+	"fmt"
 	"net"
+	"strconv"
 
 	"github.com/AllenDang/giu"
 )
@@ -27,6 +29,7 @@ type AkipUI struct {
 
 	connected bool
 	conn      net.Conn
+	cmdCh     chan SCPICommand
 }
 
 type CursorMode int32
@@ -73,11 +76,29 @@ func drawCursor(x float64, yMin, yMax float64) giu.PlotWidget {
 	)
 }
 
+func (ui *AkipUI) SetTime() {
+	ui.cmdCh <- SCPICommand{Cmd: fmt.Sprintf(":TIMebase:SCALe %s", TimeScaleS[ui.timeB])}
+}
+func (ui *AkipUI) SetOffset() {
+	hoff, err := strconv.ParseFloat(ui.Hoffset, 64)
+	if err != nil {
+		// плохой ввод — можно показать ошибку в UI
+		return
+	}
+	value := hoff / (TimeScale[ui.timeB] / 50.0)
+	ui.cmdCh <- SCPICommand{Cmd: fmt.Sprintf("TIMebase:HOFFset %d", int(value))}
+}
+
 func (ui *AkipUI) UI() giu.Layout {
 	ui.FPx, ui.FPy = giu.GetFramePadding()
 	ui.MacMult = 1
 	plots := []giu.PlotWidget{
 		giu.LineXY("", ui.X, []float64{-127, 127}), //ui.Y),
+	}
+
+	ConnectButton := "Подключить"
+	if ui.connected {
+		ConnectButton = "Отключить"
 	}
 
 	for i := 0; i < 3; i++ {
@@ -94,11 +115,11 @@ func (ui *AkipUI) UI() giu.Layout {
 			giu.Row(
 				//giu.Style().SetFontSize(20).To(giu.InputText(&commandInput).Size(-200).Hint("Введите SCPI команду...")), //CMD for send
 				giu.InputText(&ui.adr).Size(150).Hint("Введите IP:Port...").Flags(giu.InputTextFlags(giu.AlignCenter)),
-				giu.Button("Подключить").Size(100, giu.Auto).OnClick(func() {}), //Send CMD
+				giu.Button(ConnectButton).Size(100, giu.Auto).OnClick(ui.toggleConnection), //Send CMD
 				//giu.Spacing(),
 				giu.Dummy(30, -1),
-				giu.Combo("TimeBase", TimeScaleS[ui.timeB], TimeScaleS, &ui.timeB).Size(100).OnChange(func() {}),
-				giu.InputText(&ui.Hoffset).Label("H Offset").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(func() {}),
+				giu.Combo("TimeBase", TimeScaleS[ui.timeB], TimeScaleS, &ui.timeB).Size(100).OnChange(ui.SetTime),
+				giu.InputText(&ui.Hoffset).Label("H Offset").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(ui.SetOffset),
 				giu.Dummy(10, -1),
 			)),
 		giu.Child().Size(-3, (14+(ui.FPy*2)+2)*ui.MacMult).Border(false).Layout(

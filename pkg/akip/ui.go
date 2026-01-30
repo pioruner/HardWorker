@@ -28,13 +28,13 @@ func (ak *AkipW) Build() {
 }
 
 func (ak *AkipW) UI() giu.Layout {
-	_, h := giu.GetFramePadding()
+	//_, h := giu.GetFramePadding()
 	return giu.Layout{
 		giu.Align(giu.AlignCenter).To(
 			giu.Style().SetFontSize(16).To(giu.Label("АКИП")), //Main Lable
 		),
 		giu.Separator(),
-		giu.Child().Size(giu.Auto, (14+(h*2)+2)*1).Border(false).Layout(
+		/*giu.Child().Size(giu.Auto, (14+(h*2)+2)*1).Border(false).Layout(
 			giu.Row(
 				//giu.Style().SetFontSize(20).To(giu.InputText(&commandInput).Size(-200).Hint("Введите SCPI команду...")), //CMD for send
 				giu.InputText(&ak.adr).Size(-200).Hint("Введите IP:Port..."),
@@ -58,6 +58,6 @@ func (ak *AkipW) UI() giu.Layout {
 		giu.Style().SetFontSize(10).To(
 			giu.Plot("Осцилограмма").Size(-1, 300).AxisLimits(0, 1550, -150, 150, giu.ConditionAlways).Plots(
 				giu.Line("", UtoF(ak.linedata)), //ak.plotData),
-			)),
+			)),*/
 	}
 }

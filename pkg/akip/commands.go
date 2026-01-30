@@ -19,7 +19,7 @@ import (
 //:TIMebase:SCALe %s
 //:CHANnel%2$d:SCALe %1$s
 //STARTBIN
-
+/*
 func (ak *AkipW) sendSCPI(addr, cmd string, timeout time.Duration) ([]byte, error) {
 	return exData, nil
 	dialer := net.Dialer{
@@ -88,8 +88,101 @@ func (ak *AkipW) sendCMD() {
 		giu.Update()
 	}
 }
+*/
 
-func (ak *AkipW) binUnpuck(buf []byte, ch1 bool) ([]int8, float64) {
+// Connection
+type SCPICommand struct {
+	Cmd string
+}
+
+func (ui *AkipUI) toggleConnection() {
+	if ui.connected {
+		ui.disconnect()
+		return
+	}
+	ui.connect()
+}
+
+func (ui *AkipUI) connect() {
+	conn, err := net.DialTimeout("tcp", ui.adr, time.Second)
+	if err != nil {
+		ui.lastResponse = err.Error()
+		return
+	}
+	_ = conn.SetWriteDeadline(time.Now().Add(time.Millisecond * 200))
+	_ = conn.SetReadDeadline(time.Now().Add(time.Millisecond * 250))
+	ui.conn = conn
+	ui.connected = true
+	ui.lastResponse = "Connected"
+	ui.cmdCh = make(chan SCPICommand, 8)
+
+	go ui.worker()
+}
+
+func (ui *AkipUI) disconnect() {
+	ui.connected = false
+	if ui.conn != nil {
+		ui.conn.Close()
+		ui.conn = nil
+	}
+	close(ui.cmdCh)
+	ui.lastResponse = "Disconnected"
+}
+
+func (ui *AkipUI) worker() {
+	ticker := time.NewTicker(500 * time.Millisecond) // 10 Hz
+	defer ticker.Stop()
+
+	for ui.connected {
+		select {
+
+		case cmd := <-ui.cmdCh:
+			ui.SendCMD(cmd.Cmd)
+
+		case <-ticker.C:
+			ui.ReadWave()
+		}
+	}
+}
+
+func (ui *AkipUI) ReadWave() {
+	header := make([]byte, 12)
+	if _, err := io.ReadFull(ui.conn, header); err != nil {
+		ui.lastResponse = "Ошибка: " + err.Error()
+		giu.Update()
+		return
+	}
+	size := binary.LittleEndian.Uint16(header[0:2])
+
+	payload := make([]byte, size)
+	if _, err := io.ReadFull(ui.conn, payload); err != nil {
+		ui.lastResponse = "Ошибка: " + err.Error()
+		giu.Update()
+		return
+	}
+	packet := make([]byte, 0, 12+len(payload))
+	packet = append(packet, header...)
+	packet = append(packet, payload...)
+	ui.linedata, _ = ui.binUnpuck(packet, true)
+	ui.plotData = UtoF(ui.linedata)
+	giu.Update()
+}
+func (ui *AkipUI) SendCMD(cmd string) {
+	if _, err := ui.conn.Write([]byte(cmd + "\r\n")); err != nil {
+		return
+	}
+	reply := make([]byte, 50)
+	if _, err := ui.conn.Read(reply); err != nil {
+		ui.lastResponse = "Ошибка: " + err.Error()
+		giu.Update()
+		return
+	}
+	clean := bytes.TrimRight(reply, "\x00\r\n")
+	ui.lastResponse = string(clean)
+	giu.Update()
+}
+
+func (ui *AkipUI) binUnpuck(buf []byte, ch1 bool) ([]int8, float64) {
 	size := binary.LittleEndian.Uint16(buf[0:2])
 	log.Print("Размер осцилограммы: ")
 	log.Println(size)
@@ -103,14 +196,14 @@ func (ak *AkipW) binUnpuck(buf []byte, ch1 bool) ([]int8, float64) {
 	log.Printf("CH2 Index: %d", ch2_index)
 
 	if ch1 {
-		return ak.chanelUnpuck(dataBuf, ch1_index)
+		return ui.chanelUnpuck(dataBuf, ch1_index)
 	} else {
-		return ak.chanelUnpuck(dataBuf, ch2_index)
+		return ui.chanelUnpuck(dataBuf, ch2_index)
 	}
 
 }
 
-func (ak *AkipW) chanelUnpuck(buf []byte, index int) ([]int8, float64) {
+func (ui *AkipUI) chanelUnpuck(buf []byte, index int) ([]int8, float64) {
 	nData := int(binary.LittleEndian.Uint16(buf[index+15 : index+17]))
 	log.Printf("NDATA: %d", nData)
 	hMove := binary.LittleEndian.Uint16(buf[index+31 : index+33])
