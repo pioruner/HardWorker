@@ -16,7 +16,7 @@ var (
 
 func init() {
 	akiper = akip.New("192.168.0.100:3000")
-	new_akip = akip.Init()
+	new_akip = akip.Init("192.168.0.100:3000")
 }
 
 func close() bool {
@@ -27,6 +27,8 @@ func close() bool {
 }
 
 func GUI(iconApp []byte, fontI []byte) {
+	new_akip.Load()
+	defer new_akip.Save()
 	app.State.Gui = true
 	window := giu.NewMasterWindow("HardWorker", 1000, 450, giu.MasterWindowFlagsMaximized) // Create main window. giu.MasterWindowFlagsMaximized
 	img, _, err := image.Decode(bytes.NewReader(iconApp))                                  //Decode icon

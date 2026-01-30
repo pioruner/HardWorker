@@ -3,9 +3,12 @@ package akip
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"io"
 	"log"
 	"net"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/AllenDang/giu"
@@ -122,4 +125,92 @@ func (ak *AkipW) chanelUnpuck(buf []byte, index int) ([]int8, float64) {
 		shift += 2
 	}
 	return wave[len(wave)/2:], dt
+}
+
+// LOAD && SAVE
+
+type AkipState struct {
+	Adr   string
+	TimeB int32
+	Auto  bool
+
+	Hoffset string
+	Reper   string
+	Square  string
+	Vspeed  string
+	Vtime   string
+	Volume  string
+	MinY    string
+	MinMove string
+
+	CursorMode CursorMode
+	CursorPos  [3]int32
+}
+
+func AppConfigPath() (string, error) {
+	base, err := os.UserConfigDir()
+	if err != nil {
+		return "", err
+	}
+
+	dir := filepath.Join(base, "HardWorker")
+	err = os.MkdirAll(dir, 0755)
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(dir, "akip.json"), nil
+}
+
+func LoadState(path string) (AkipState, error) {
+	var state AkipState
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return state, err
+	}
+	err = json.Unmarshal(data, &state)
+	return state, err
+}
+
+func SaveState(path string, state AkipState) error {
+	data, err := json.MarshalIndent(state, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0644)
+}
+
+func (ui *AkipUI) ExportState() AkipState {
+	return AkipState{
+		Adr:        ui.adr,
+		TimeB:      ui.timeB,
+		Auto:       ui.auto,
+		Hoffset:    ui.Hoffset,
+		Reper:      ui.reper,
+		Square:     ui.square,
+		Vspeed:     ui.vspeed,
+		Vtime:      ui.vtime,
+		Volume:     ui.volume,
+		MinY:       ui.minY,
+		MinMove:    ui.minMove,
+		CursorMode: ui.cursorMode,
+		CursorPos:  ui.cursorPos,
+	}
+}
+
+func (ui *AkipUI) ImportState(s AkipState) {
+	ui.adr = s.Adr
+	ui.timeB = s.TimeB
+	ui.auto = s.Auto
+	ui.Hoffset = s.Hoffset
+	ui.reper = s.Reper
+	ui.square = s.Square
+	ui.vspeed = s.Vspeed
+	ui.vtime = s.Vtime
+	ui.volume = s.Volume
+	ui.minY = s.MinY
+	ui.minMove = s.MinMove
+	ui.cursorMode = s.CursorMode
+	ui.cursorPos = s.CursorPos
 }
