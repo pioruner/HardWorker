@@ -45,7 +45,7 @@ func main() {
 		case app.EventToggleGUI:
 			ui.GUI(iconApp, fontI, akiper)
 		case app.EventQuit:
-			ctx.Done()
+			cancel()
 			wg.Wait()
 			os.Exit(0)
 		}

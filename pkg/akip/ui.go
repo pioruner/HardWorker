@@ -27,7 +27,6 @@ func (ui *AkipUI) SetTime() {
 func (ui *AkipUI) SetOffset() {
 	hoff, err := strconv.ParseFloat(ui.Hoffset, 64)
 	if err != nil {
-		// плохой ввод — можно показать ошибку в UI
 		return
 	}
 	value := (hoff) / (TimeScale[ui.timeB] / 50.0)
@@ -42,11 +41,10 @@ func (ui *AkipUI) UI() giu.Layout {
 	ui.FPx, ui.FPy = giu.GetFramePadding()
 	ui.MacMult = 1
 	plots := []giu.PlotWidget{
-		giu.LineXY("Wave", ui.X, ui.Y), //ui.Y),
+		giu.LineXY("Wave", ui.X, ui.Y),
 	}
 
 	for i := 0; i < 3; i++ {
-		//x := ui.X[ui.cursorPos[i]]
 		x := float64(ui.cursorPos[i])
 		plots = append(plots, drawCursor(x, -150, 150))
 	}
@@ -67,7 +65,6 @@ func (ui *AkipUI) UI() giu.Layout {
 		giu.Style().SetDisabled(!(ui.connected)).To(
 			giu.Child().Size(-3, (14+(ui.FPy*2)+2)*ui.MacMult).Border(false).Layout(
 				giu.Row(
-					//giu.Dummy(50, -1),
 					giu.InputText(&ui.reper).Label("dL Reper").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(func() {}),
 					giu.InputText(&ui.square).Label("S Square").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(func() {}),
 					giu.Dummy(10, -1),
@@ -87,13 +84,11 @@ func (ui *AkipUI) UI() giu.Layout {
 			giu.Separator(),
 			giu.Style().SetFontSize(14).To(
 				giu.Plot("Осцилограмма").Size(-3, -35-int(14+(ui.FPy*2)+2)*1).AxisLimits(ui.X[0], ui.X[ui.xsize], -150, 150, giu.ConditionAlways).Plots(
-					//giu.Line("", UtoF(ui.linedata)),
-					plots[0], plots[1], plots[2], plots[3],
+					plots...,
 				)),
 			giu.Separator(),
 			giu.SliderInt(&ui.cursorPos[ui.cursorMode], int32(ui.X[0]), int32(ui.X[ui.xsize])).Size(-1),
 			giu.Separator(),
-			//giu.Child().Size(-3, (14+(ui.FPy*2)+2)*1).Border(false).Layout(
 			giu.Row(
 				giu.RadioButton("Start", ui.cursorMode == CursorStart).
 					OnChange(func() { ui.cursorMode = CursorStart }),

@@ -15,30 +15,33 @@ import (
 )
 
 func (ui *AkipUI) connectionLoop() {
+	ui.Load()
+	defer ui.wg.Done()
+	defer ui.Save()
 	retry := time.Second
-
 	for {
 		select {
 		case <-ui.ctx.Done():
 			return
 		default:
-		}
-		conn, err := net.DialTimeout("tcp", ui.adr, time.Second)
-		if err != nil {
-			time.Sleep(retry)
-			continue
-		}
-		ui.conn = conn
+			conn, err := net.DialTimeout("tcp", ui.adr, time.Second)
+			if err != nil {
+				time.Sleep(retry)
+				continue
+			}
+			ui.conn = conn
 
-		_ = conn.SetReadDeadline(time.Now().Add(time.Millisecond * 500))
-		ui.lastResponse = "Connected"
-		log.Printf("Connected")
-		err = ui.sessionLoop()
-		conn.Close()
-		ui.conn = nil
-		ui.connected = false
-		time.Sleep(retry)
-		ui.lastResponse = "Disconnected"
+			_ = conn.SetReadDeadline(time.Now().Add(time.Millisecond * 500))
+			ui.lastResponse = "Connected"
+			err = ui.sessionLoop()
+			conn.Close()
+			ui.conn = nil
+			ui.connected = false
+			time.Sleep(retry)
+			ui.lastResponse = "Disconnected"
+			ui.setUpdate()
+		}
+
 	}
 }
 

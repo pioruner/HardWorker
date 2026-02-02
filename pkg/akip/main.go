@@ -37,11 +37,8 @@ func (ui *AkipUI) Load() {
 }
 
 func (ui *AkipUI) Run() {
-	ui.Load()
 	ui.wg.Add(1)
 	go ui.connectionLoop()
-	ui.Save()
-	ui.wg.Done()
 }
 
 type AkipUI struct {
