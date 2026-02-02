@@ -2,7 +2,6 @@ package akip
 
 import (
 	"bytes"
-	"context"
 	"encoding/binary"
 	"encoding/json"
 	"io"
@@ -13,90 +12,82 @@ import (
 	"path/filepath"
 	"strconv"
 	"time"
-
-	"github.com/AllenDang/giu"
 )
 
-// Connection
+func (ui *AkipUI) connectionLoop() {
+	retry := time.Second
 
-func (ui *AkipUI) toggleConnection() {
-	if ui.connected {
-		ui.disconnect()
-		return
-	}
-	ui.connect()
-}
+	for {
+		select {
+		case <-ui.ctx.Done():
+			return
+		default:
+		}
+		conn, err := net.DialTimeout("tcp", ui.adr, time.Second)
+		if err != nil {
+			time.Sleep(retry)
+			continue
+		}
+		ui.conn = conn
 
-func (ui *AkipUI) connect() {
-	conn, err := net.DialTimeout("tcp", ui.adr, time.Second)
-	if err != nil {
-		ui.lastResponse = err.Error()
-		return
-	}
-	//_ = conn.SetWriteDeadline(time.Now().Add(time.Second * 3))
-	_ = conn.SetReadDeadline(time.Now().Add(time.Millisecond * 200))
-	ui.conn = conn
-	ui.connected = true
-	ui.lastResponse = "Connected"
-	log.Printf("Connected")
-	ui.cmdCh = make(chan SCPICommand, 8)
-	ui.ctx, ui.wcancel = context.WithCancel(context.Background())
-
-	go ui.worker()
-}
-
-func (ui *AkipUI) disconnect() {
-	ui.connected = false
-	if ui.conn != nil {
-		ui.conn.Close()
+		_ = conn.SetReadDeadline(time.Now().Add(time.Millisecond * 500))
+		ui.lastResponse = "Connected"
+		log.Printf("Connected")
+		err = ui.sessionLoop()
+		conn.Close()
 		ui.conn = nil
+		ui.connected = false
+		time.Sleep(retry)
+		ui.lastResponse = "Disconnected"
 	}
-	if ui.wcancel != nil {
-		ui.wcancel() // 🔥 корректно останавливает worker
-	}
-
-	ui.lastResponse = "Disconnected"
 }
 
-func (ui *AkipUI) worker() {
-	ticker := time.NewTicker(500 * time.Millisecond) // 10 Hz
+func (ui *AkipUI) sessionLoop() error {
+	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 	ui.cmdCh <- SCPICommand{Cmd: ":SDSLSCPI#"}
 	ui.SetTime()
 	ui.SetOffset()
-	for ui.connected {
+
+	for {
 		select {
 		case <-ui.ctx.Done():
-			log.Printf("Worker stopped")
-			return
-		case cmd := <-ui.cmdCh:
-			log.Printf("Send CMD %s", cmd.Cmd)
-			ui.SendCMD(cmd.Cmd)
+			return nil
 
 		case <-ticker.C:
-			log.Printf("ReadWave")
-			ui.ReadWave()
+			if err := ui.ReadWave(); err != nil {
+				return err // <-- триггер reconnect
+			}
+
+		case cmd := <-ui.cmdCh:
+			if err := ui.SendCMD(cmd.Cmd); err != nil {
+				return err
+			}
 		}
 	}
 }
 
-func (ui *AkipUI) ReadWave() {
+func (ui *AkipUI) setUpdate() {
+	ui.update = true
+}
+
+func (ui *AkipUI) ReadWave() error {
 	if _, err := ui.conn.Write([]byte("STARTBIN")); err != nil {
 		ui.lastResponse = "Ошибка Write: " + err.Error()
-		return
+		return err
 	}
 	header := make([]byte, 12)
 	if _, err := io.ReadFull(ui.conn, header); err != nil {
 		ui.lastResponse = "Ошибка Read Header: " + err.Error()
-		giu.Update()
-		return
+		ui.setUpdate()
+		return err
 	}
 	size := binary.LittleEndian.Uint16(header[0:2])
 	payload := make([]byte, size)
 	if _, err := io.ReadFull(ui.conn, payload); err != nil {
 		ui.lastResponse = "Ошибка Read Payload: " + err.Error()
-		giu.Update()
-		return
+		ui.setUpdate()
+		return err
 	}
 	packet := make([]byte, 0, 12+len(payload))
 	packet = append(packet, header...)
@@ -114,15 +105,17 @@ func (ui *AkipUI) ReadWave() {
 	ui.xhoffs = hoffs
 	ui.xdt = dt
 	ui.xsize = len(ui.plotData) - 1
-	//log.Printf("X0 %f, XL %f, dT %f, HOffst %f, lenData %d, lastX %f", ui.X[0], ui.X[1519], dt, hoffs, len(ui.plotData)-1, ui.X[ui.xsize])
-	giu.Update()
+	ui.connected = true
+	ui.setUpdate()
+	return nil
 }
-func (ui *AkipUI) SendCMD(cmd string) {
+func (ui *AkipUI) SendCMD(cmd string) error {
 	if _, err := ui.conn.Write([]byte(cmd)); err != nil { //+ "\r\n"
-		return
+		return err
 	}
 	ui.lastResponse = string(cmd)
-	giu.Update()
+	ui.setUpdate()
+	return nil
 }
 
 func (ui *AkipUI) binUnpuck(buf []byte, ch1 bool) ([]int8, float64, float64) {

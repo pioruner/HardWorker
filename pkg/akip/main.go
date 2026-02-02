@@ -3,7 +3,46 @@ package akip
 import (
 	"context"
 	"net"
+	"sync"
 )
+
+func Init(adr string, name string, ctx context.Context, wg *sync.WaitGroup) *AkipUI {
+	return &AkipUI{
+		adr:    adr,
+		id:     name,
+		cmdCh:  make(chan SCPICommand, 8),
+		X:      []float64{0, 1, 2, 3},
+		Y:      []float64{1, 1, 1, 1},
+		xsize:  3,
+		ctx:    ctx,
+		wg:     wg,
+		update: false,
+	}
+}
+
+func (ui *AkipUI) Save() {
+	path, err := AppConfigPath(ui.id)
+	if err == nil {
+		_ = SaveState(path, ui.ExportState())
+	}
+}
+
+func (ui *AkipUI) Load() {
+	path, err := AppConfigPath(ui.id)
+	if err == nil {
+		if state, err := LoadState(path); err == nil {
+			ui.ImportState(state)
+		}
+	}
+}
+
+func (ui *AkipUI) Run() {
+	ui.Load()
+	ui.wg.Add(1)
+	go ui.connectionLoop()
+	ui.Save()
+	ui.wg.Done()
+}
 
 type AkipUI struct {
 	adr          string
@@ -31,8 +70,9 @@ type AkipUI struct {
 	xdt, xhoffs float64
 	xsize       int
 
-	ctx     context.Context
-	wcancel context.CancelFunc
+	ctx    context.Context
+	wg     *sync.WaitGroup
+	update bool
 }
 
 type CursorMode int32

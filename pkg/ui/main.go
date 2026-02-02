@@ -5,19 +5,8 @@ import (
 	"image"
 
 	"github.com/AllenDang/giu"
-	"github.com/pioruner/HardWorker.git/pkg/akip"
 	"github.com/pioruner/HardWorker.git/pkg/app"
 )
-
-var (
-	//akiper   *akip.AkipW
-	new_akip *akip.AkipUI
-)
-
-func init() {
-	//akiper = akip.New("192.168.0.100:3000")
-	new_akip = akip.Init("192.168.0.100:3000")
-}
 
 func close() bool {
 	if app.MacOS {
@@ -26,9 +15,7 @@ func close() bool {
 	return true
 }
 
-func GUI(iconApp []byte, fontI []byte) {
-	new_akip.Load()
-	defer new_akip.Save()
+func GUI(iconApp []byte, fontI []byte, w ...giu.Widget) {
 	app.State.Gui = true
 	window := giu.NewMasterWindow("HardWorker", 1000, 450, giu.MasterWindowFlagsMaximized) // Create main window. giu.MasterWindowFlagsMaximized
 	img, _, err := image.Decode(bytes.NewReader(iconApp))                                  //Decode icon
@@ -50,8 +37,7 @@ func GUI(iconApp []byte, fontI []byte) {
 
 		default:
 			giu.SingleWindow().Layout( //Main UI
-				//akiper,
-				new_akip,
+				w...,
 			)
 		}
 	})
