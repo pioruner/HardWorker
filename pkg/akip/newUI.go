@@ -42,7 +42,8 @@ const (
 
 func Init(a string) *AkipUI {
 	return &AkipUI{
-		adr: a,
+		adr:   a,
+		cmdCh: make(chan SCPICommand, 8),
 	}
 }
 
@@ -118,37 +119,40 @@ func (ui *AkipUI) UI() giu.Layout {
 				giu.Button(ConnectButton).Size(100, giu.Auto).OnClick(ui.toggleConnection), //Send CMD
 				//giu.Spacing(),
 				giu.Dummy(30, -1),
-				giu.Combo("TimeBase", TimeScaleS[ui.timeB], TimeScaleS, &ui.timeB).Size(100).OnChange(ui.SetTime),
-				giu.InputText(&ui.Hoffset).Label("H Offset").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(ui.SetOffset),
+				giu.Style().SetDisabled(!(ui.connected)).To(
+					giu.Combo("TimeBase", TimeScaleS[ui.timeB], TimeScaleS, &ui.timeB).Size(100).OnChange(ui.SetTime),
+					giu.InputText(&ui.Hoffset).Label("H Offset").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(ui.SetOffset),
+				),
 				giu.Dummy(10, -1),
 			)),
-		giu.Child().Size(-3, (14+(ui.FPy*2)+2)*ui.MacMult).Border(false).Layout(
-			giu.Row(
-				//giu.Dummy(50, -1),
-				giu.InputText(&ui.reper).Label("dL Reper").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(func() {}),
-				giu.InputText(&ui.square).Label("S Square").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(func() {}),
-				giu.Dummy(10, -1),
-				giu.InputText(&ui.vspeed).Label("Speed").Size(50).Flags(giu.InputTextFlagsReadOnly),
-				giu.InputText(&ui.vtime).Label("Time").Size(50).Flags(giu.InputTextFlagsReadOnly),
-				giu.InputText(&ui.volume).Label("Volume").Size(50).Flags(giu.InputTextFlagsReadOnly),
-				giu.Dummy(50, -1),
-				giu.InputText(&ui.minY).Label("Search minY").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(func() {}),
-				giu.InputText(&ui.minMove).Label("Search move").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(func() {}),
-				giu.RadioButton("Auto Search", ui.auto).
-					OnChange(func() { ui.auto = !ui.auto }),
-			)),
-		giu.Separator(),
-		giu.InputText(&ui.lastResponse).Size(giu.Auto).Flags(giu.InputTextFlagsReadOnly).Hint("Последний ответ прибора..."), //Response for CMD
-		giu.Separator(),
-		giu.Style().SetFontSize(14).To(
-			giu.Plot("Осцилограмма").Size(-3, -35-int(14+(ui.FPy*2)+2)*1).AxisLimits(0, 1550, -150, 150, giu.ConditionAlways).Plots(
-				giu.Line("", UtoF(ui.linedata)),
-				plots[1], plots[2], plots[3],
-			)),
-		giu.Separator(),
-		giu.SliderInt(&ui.cursorPos[ui.cursorMode], 0, 1520).Size(-1),
-		giu.Separator(),
-		giu.Child().Size(-3, (14+(ui.FPy*2)+2)*1).Border(false).Layout(
+		giu.Style().SetDisabled(!(ui.connected)).To(
+			giu.Child().Size(-3, (14+(ui.FPy*2)+2)*ui.MacMult).Border(false).Layout(
+				giu.Row(
+					//giu.Dummy(50, -1),
+					giu.InputText(&ui.reper).Label("dL Reper").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(func() {}),
+					giu.InputText(&ui.square).Label("S Square").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(func() {}),
+					giu.Dummy(10, -1),
+					giu.InputText(&ui.vspeed).Label("Speed").Size(50).Flags(giu.InputTextFlagsReadOnly),
+					giu.InputText(&ui.vtime).Label("Time").Size(50).Flags(giu.InputTextFlagsReadOnly),
+					giu.InputText(&ui.volume).Label("Volume").Size(50).Flags(giu.InputTextFlagsReadOnly),
+					giu.Dummy(50, -1),
+					giu.InputText(&ui.minY).Label("Search minY").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(func() {}),
+					giu.InputText(&ui.minMove).Label("Search move").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(func() {}),
+					giu.RadioButton("Auto Search", ui.auto).
+						OnChange(func() { ui.auto = !ui.auto }),
+				)),
+			giu.Separator(),
+			giu.InputText(&ui.lastResponse).Size(giu.Auto).Flags(giu.InputTextFlagsReadOnly).Hint("Последний ответ прибора..."), //Response for CMD
+			giu.Separator(),
+			giu.Style().SetFontSize(14).To(
+				giu.Plot("Осцилограмма").Size(-3, -35-int(14+(ui.FPy*2)+2)*1).AxisLimits(0, 1550, -150, 150, giu.ConditionAlways).Plots(
+					giu.Line("", UtoF(ui.linedata)),
+					plots[1], plots[2], plots[3],
+				)),
+			giu.Separator(),
+			giu.SliderInt(&ui.cursorPos[ui.cursorMode], 0, 1520).Size(-1),
+			giu.Separator(),
+			//giu.Child().Size(-3, (14+(ui.FPy*2)+2)*1).Border(false).Layout(
 			giu.Row(
 				giu.RadioButton("Start", ui.cursorMode == CursorStart).
 					OnChange(func() { ui.cursorMode = CursorStart }),
@@ -158,7 +162,10 @@ func (ui *AkipUI) UI() giu.Layout {
 
 				giu.RadioButton("Front", ui.cursorMode == CursorFront).
 					OnChange(func() { ui.cursorMode = CursorFront }),
+
+				giu.InputText(&ui.vspeed).Label("TimeBase").Size(50).Flags(giu.InputTextFlagsReadOnly),
 			),
+			//),
 		),
 	}
 }
