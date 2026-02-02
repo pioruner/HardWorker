@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"math"
@@ -110,9 +111,23 @@ func (ui *AkipUI) ReadWave() error {
 	ui.xdt = dt
 	ui.xsize = len(ui.plotData) - 1
 	ui.connected = true
+	ui.Calc()
 	ui.setUpdate()
 	return nil
 }
+
+func (ui *AkipUI) Calc() {
+	time := ui.cursorPos[2] - ui.cursorPos[0]
+	repSize, _ := strconv.ParseFloat(ui.reper, 64)
+	rep := repSize / (float64(ui.cursorPos[1]-ui.cursorPos[0]) / 1000000)
+	speed := rep / 100
+	sq, _ := strconv.ParseFloat(ui.square, 64)
+	volume := float64(time) * rep * sq
+	ui.vtime = fmt.Sprintf("%.2f", time)
+	ui.vspeed = fmt.Sprintf("%.2f", speed)
+	ui.volume = fmt.Sprintf("%.2f", volume)
+}
+
 func (ui *AkipUI) SendCMD(cmd string) error {
 	if _, err := ui.conn.Write([]byte(cmd)); err != nil { //+ "\r\n"
 		return err

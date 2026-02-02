@@ -40,6 +40,7 @@ func (ui *AkipUI) UI() giu.Layout {
 	}
 	ui.FPx, ui.FPy = giu.GetFramePadding()
 	ui.MacMult = 1
+
 	plots := []giu.PlotWidget{
 		giu.LineXY("Wave", ui.X, ui.Y),
 	}
