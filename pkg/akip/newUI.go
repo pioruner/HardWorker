@@ -30,6 +30,9 @@ type AkipUI struct {
 	connected bool
 	conn      net.Conn
 	cmdCh     chan SCPICommand
+
+	xdt, xhoffs float64
+	xsize       int
 }
 
 type CursorMode int32
@@ -44,6 +47,9 @@ func Init(a string) *AkipUI {
 	return &AkipUI{
 		adr:   a,
 		cmdCh: make(chan SCPICommand, 8),
+		X:     []float64{0, 1, 2, 3},
+		Y:     []float64{1, 1, 1, 1},
+		xsize: 3,
 	}
 }
 
@@ -86,15 +92,15 @@ func (ui *AkipUI) SetOffset() {
 		// плохой ввод — можно показать ошибку в UI
 		return
 	}
-	value := hoff / (TimeScale[ui.timeB] / 50.0)
-	ui.cmdCh <- SCPICommand{Cmd: fmt.Sprintf("TIMebase:HOFFset %d", int(value))}
+	value := (hoff) / (TimeScale[ui.timeB] / 50.0)
+	ui.cmdCh <- SCPICommand{Cmd: fmt.Sprintf(":TIMebase:HOFFset %d", int(value*1e-6))}
 }
 
 func (ui *AkipUI) UI() giu.Layout {
 	ui.FPx, ui.FPy = giu.GetFramePadding()
 	ui.MacMult = 1
 	plots := []giu.PlotWidget{
-		giu.LineXY("", ui.X, []float64{-127, 127}), //ui.Y),
+		giu.LineXY("Wave", ui.X, ui.Y), //ui.Y),
 	}
 
 	ConnectButton := "Подключить"
@@ -145,12 +151,12 @@ func (ui *AkipUI) UI() giu.Layout {
 			giu.InputText(&ui.lastResponse).Size(giu.Auto).Flags(giu.InputTextFlagsReadOnly).Hint("Последний ответ прибора..."), //Response for CMD
 			giu.Separator(),
 			giu.Style().SetFontSize(14).To(
-				giu.Plot("Осцилограмма").Size(-3, -35-int(14+(ui.FPy*2)+2)*1).AxisLimits(0, 1550, -150, 150, giu.ConditionAlways).Plots(
-					giu.Line("", UtoF(ui.linedata)),
-					plots[1], plots[2], plots[3],
+				giu.Plot("Осцилограмма").Size(-3, -35-int(14+(ui.FPy*2)+2)*1).AxisLimits(ui.X[0], ui.X[ui.xsize], -150, 150, giu.ConditionAlways).Plots(
+					//giu.Line("", UtoF(ui.linedata)),
+					plots[0], plots[1], plots[2], plots[3],
 				)),
 			giu.Separator(),
-			giu.SliderInt(&ui.cursorPos[ui.cursorMode], 0, 1520).Size(-1),
+			giu.SliderInt(&ui.cursorPos[ui.cursorMode], int32(ui.X[0]), int32(ui.X[ui.xsize])).Size(-1),
 			giu.Separator(),
 			//giu.Child().Size(-3, (14+(ui.FPy*2)+2)*1).Border(false).Layout(
 			giu.Row(

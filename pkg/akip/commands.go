@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/AllenDang/giu"
@@ -109,11 +110,12 @@ func (ui *AkipUI) connect() {
 		ui.lastResponse = err.Error()
 		return
 	}
-	_ = conn.SetWriteDeadline(time.Now().Add(time.Millisecond * 200))
-	_ = conn.SetReadDeadline(time.Now().Add(time.Millisecond * 250))
+	//_ = conn.SetWriteDeadline(time.Now().Add(time.Second * 3))
+	//_ = conn.SetReadDeadline(time.Now().Add(time.Millisecond * 2000))
 	ui.conn = conn
 	ui.connected = true
 	ui.lastResponse = "Connected"
+	log.Printf("Connected")
 	ui.cmdCh = make(chan SCPICommand, 8)
 
 	go ui.worker()
@@ -132,74 +134,105 @@ func (ui *AkipUI) disconnect() {
 func (ui *AkipUI) worker() {
 	ticker := time.NewTicker(500 * time.Millisecond) // 10 Hz
 	defer ticker.Stop()
-
+	ui.cmdCh <- SCPICommand{Cmd: ":SDSLSCPI#"}
+	ui.SetTime()
+	ui.SetOffset()
 	for ui.connected {
 		select {
 
 		case cmd := <-ui.cmdCh:
+			log.Printf("Send CMD %s", cmd.Cmd)
 			ui.SendCMD(cmd.Cmd)
 
 		case <-ticker.C:
+			log.Printf("ReadWave")
 			ui.ReadWave()
 		}
 	}
 }
 
 func (ui *AkipUI) ReadWave() {
+	if _, err := ui.conn.Write([]byte("STARTBIN")); err != nil {
+		ui.lastResponse = "Ошибка Write: " + err.Error()
+		return
+	}
 	header := make([]byte, 12)
 	if _, err := io.ReadFull(ui.conn, header); err != nil {
-		ui.lastResponse = "Ошибка: " + err.Error()
+		ui.lastResponse = "Ошибка Read Header: " + err.Error()
 		giu.Update()
 		return
 	}
 	size := binary.LittleEndian.Uint16(header[0:2])
-
+	/*
+		if _, err := ui.conn.Write([]byte("STARTBIN")); err != nil {
+			ui.lastResponse = "Ошибка Write: " + err.Error()
+			return
+		}
+	*/
 	payload := make([]byte, size)
 	if _, err := io.ReadFull(ui.conn, payload); err != nil {
-		ui.lastResponse = "Ошибка: " + err.Error()
+		ui.lastResponse = "Ошибка Read Payload: " + err.Error()
 		giu.Update()
 		return
 	}
 	packet := make([]byte, 0, 12+len(payload))
 	packet = append(packet, header...)
 	packet = append(packet, payload...)
-	ui.linedata, _ = ui.binUnpuck(packet, true)
+	var dt, hoffs float64
+	ui.linedata, dt, hoffs = ui.binUnpuck(packet, true)
+	dt = TimeScale[ui.timeB] * 15.2 / 3040 * 1000000
 	ui.plotData = UtoF(ui.linedata)
+	ui.Y = ui.plotData
+	ui.X = make([]float64, len(ui.plotData))
+	hoffs, _ = strconv.ParseFloat(ui.Hoffset, 64)
+	for i := 0; i < len(ui.plotData); i++ {
+		ui.X[i] = (float64(i) * dt) + hoffs
+		//log.Printf("X=%f", ui.X[i])
+	}
+	ui.xhoffs = hoffs
+	ui.xdt = dt
+	ui.xsize = len(ui.plotData) - 1
+	//log.Printf("X0 %f, XL %f, dT %f, HOffst %f, lenData %d, lastX %f", ui.X[0], ui.X[1519], dt, hoffs, len(ui.plotData)-1, ui.X[ui.xsize])
+
 	giu.Update()
 }
 func (ui *AkipUI) SendCMD(cmd string) {
-	if _, err := ui.conn.Write([]byte(cmd + "\r\n")); err != nil {
+	if _, err := ui.conn.Write([]byte(cmd)); err != nil { //+ "\r\n"
 		return
 	}
-	reply := make([]byte, 50)
-	if _, err := ui.conn.Read(reply); err != nil {
-		ui.lastResponse = "Ошибка: " + err.Error()
-		giu.Update()
-		return
-	}
-	clean := bytes.TrimRight(reply, "\x00\r\n")
-	ui.lastResponse = string(clean)
+	/*
+		reply := make([]byte, 50)
+		if _, err := ui.conn.Read(reply); err != nil {
+			ui.lastResponse = "Ошибка: " + err.Error()
+			giu.Update()
+			return
+		}
+		clean := bytes.TrimRight(reply, "\x00\r\n")
+	*/
+	ui.lastResponse = string(cmd)
 	giu.Update()
 }
 
-func (ui *AkipUI) binUnpuck(buf []byte, ch1 bool) ([]int8, float64) {
+func (ui *AkipUI) binUnpuck(buf []byte, ch1 bool) ([]int8, float64, float64) {
 	size := binary.LittleEndian.Uint16(buf[0:2])
 	log.Print("Размер осцилограммы: ")
 	log.Println(size)
 
 	dataBuf := buf[12:size]
 	//log.Printf("Осцилограмма: % X", dataBuf)
-
+	//hoffs := float64(math.Float32frombits(binary.BigEndian.Uint32(buf[0:4])))
 	ch1_index := bytes.Index(dataBuf, []byte{0x43, 0x48, 0x31})
 	log.Printf("CH1 Index: %d", ch1_index)
 	ch2_index := bytes.Index(dataBuf, []byte{0x43, 0x48, 0x32})
 	log.Printf("CH2 Index: %d", ch2_index)
-
+	var data []int8
+	var dtx float64
 	if ch1 {
-		return ui.chanelUnpuck(dataBuf, ch1_index)
+		data, dtx = ui.chanelUnpuck(dataBuf, ch1_index)
 	} else {
-		return ui.chanelUnpuck(dataBuf, ch2_index)
+		data, dtx = ui.chanelUnpuck(dataBuf, ch2_index)
 	}
+	return data, dtx, 0
 
 }
 
@@ -208,8 +241,8 @@ func (ui *AkipUI) chanelUnpuck(buf []byte, index int) ([]int8, float64) {
 	log.Printf("NDATA: %d", nData)
 	hMove := binary.LittleEndian.Uint16(buf[index+31 : index+33])
 	log.Printf("hMove: %d", hMove)
-	dt := TimeScale[buf[index+27]]
-	log.Printf("dT: %f", dt)
+	//dt := TimeScale[buf[index+27]-7]
+	//log.Printf("dT: %f", dt)
 	shift := index + 59
 	log.Printf("shift: %d", shift)
 	var wave = make([]int8, nData)
@@ -217,7 +250,7 @@ func (ui *AkipUI) chanelUnpuck(buf []byte, index int) ([]int8, float64) {
 		wave[i] = int8(binary.LittleEndian.Uint16(buf[shift:shift+2]) + hMove)
 		shift += 2
 	}
-	return wave[len(wave)/2:], dt
+	return wave[len(wave)/2:], 0
 }
 
 // LOAD && SAVE
