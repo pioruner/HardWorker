@@ -2,6 +2,7 @@ package akip
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"encoding/json"
 	"io"
@@ -17,9 +18,6 @@ import (
 )
 
 // Connection
-type SCPICommand struct {
-	Cmd string
-}
 
 func (ui *AkipUI) toggleConnection() {
 	if ui.connected {
@@ -36,12 +34,13 @@ func (ui *AkipUI) connect() {
 		return
 	}
 	//_ = conn.SetWriteDeadline(time.Now().Add(time.Second * 3))
-	//_ = conn.SetReadDeadline(time.Now().Add(time.Millisecond * 2000))
+	_ = conn.SetReadDeadline(time.Now().Add(time.Millisecond * 200))
 	ui.conn = conn
 	ui.connected = true
 	ui.lastResponse = "Connected"
 	log.Printf("Connected")
 	ui.cmdCh = make(chan SCPICommand, 8)
+	ui.ctx, ui.wcancel = context.WithCancel(context.Background())
 
 	go ui.worker()
 }
@@ -52,7 +51,10 @@ func (ui *AkipUI) disconnect() {
 		ui.conn.Close()
 		ui.conn = nil
 	}
-	close(ui.cmdCh)
+	if ui.wcancel != nil {
+		ui.wcancel() // 🔥 корректно останавливает worker
+	}
+
 	ui.lastResponse = "Disconnected"
 }
 
@@ -64,7 +66,9 @@ func (ui *AkipUI) worker() {
 	ui.SetOffset()
 	for ui.connected {
 		select {
-
+		case <-ui.ctx.Done():
+			log.Printf("Worker stopped")
+			return
 		case cmd := <-ui.cmdCh:
 			log.Printf("Send CMD %s", cmd.Cmd)
 			ui.SendCMD(cmd.Cmd)
@@ -157,27 +161,16 @@ func (ui *AkipUI) chanelUnpuck(buf []byte, index int) ([]int8, float64, float64)
 	return wave[len(wave)/2:], dt, hoffs
 }
 
-// LOAD && SAVE
-
-type AkipState struct {
-	Adr   string
-	TimeB int32
-	Auto  bool
-
-	Hoffset string
-	Reper   string
-	Square  string
-	Vspeed  string
-	Vtime   string
-	Volume  string
-	MinY    string
-	MinMove string
-
-	CursorMode CursorMode
-	CursorPos  [3]int32
+func UtoF(data []int8) []float64 {
+	result := make([]float64, len(data))
+	for i, v := range data {
+		result[i] = float64(v)
+	}
+	return result
 }
 
-func AppConfigPath() (string, error) {
+// LOAD && SAVE
+func AppConfigPath(name string) (string, error) {
 	base, err := os.UserConfigDir()
 	if err != nil {
 		return "", err
@@ -189,7 +182,7 @@ func AppConfigPath() (string, error) {
 		return "", err
 	}
 
-	return filepath.Join(dir, "akip.json"), nil
+	return filepath.Join(dir, name+".json"), nil
 }
 
 func LoadState(path string) (AkipState, error) {

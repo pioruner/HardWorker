@@ -2,45 +2,9 @@ package akip
 
 import (
 	"fmt"
-	"net"
 	"strconv"
 
 	"github.com/AllenDang/giu"
-)
-
-type AkipUI struct {
-	adr          string
-	id           string
-	commandInput string // Текущая команда для ввода
-	lastResponse string // Последний ответ прибора
-	linedata     []int8
-	plotData     []float64
-
-	X, Y []float64
-
-	FPx, FPy, MacMult                                            float32
-	Hoffset, reper, square, vspeed, vtime, volume, minY, minMove string
-	auto                                                         bool
-
-	timeB int32
-
-	cursorMode CursorMode
-	cursorPos  [3]int32 // позиции курсоров (в индексах)
-
-	connected bool
-	conn      net.Conn
-	cmdCh     chan SCPICommand
-
-	xdt, xhoffs float64
-	xsize       int
-}
-
-type CursorMode int32
-
-const (
-	CursorStart CursorMode = iota
-	CursorReper
-	CursorFront
 )
 
 func Init(a string) *AkipUI {
@@ -60,14 +24,14 @@ func (ui *AkipUI) Build() {
 }
 
 func (ui *AkipUI) Save() {
-	path, err := AppConfigPath()
+	path, err := AppConfigPath("akip")
 	if err == nil {
 		_ = SaveState(path, ui.ExportState())
 	}
 }
 
 func (ui *AkipUI) Load() {
-	path, err := AppConfigPath()
+	path, err := AppConfigPath("akip")
 	if err == nil {
 		if state, err := LoadState(path); err == nil {
 			ui.ImportState(state)
