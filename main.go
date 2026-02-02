@@ -25,19 +25,26 @@ var fontI []byte
 var ctx, cancel = context.WithCancel(context.Background())
 var wg sync.WaitGroup
 
+type x interface {
+	Run()
+}
+
+func Run(modules ...x) {
+	for _, i := range modules {
+		i.Run()
+	}
+}
+
 // HardWare
 var akiper *akip.AkipUI
 
-func init() {
+func Init() {
 	akiper = akip.Init("192.168.0.100:3000", "akip", ctx, &wg)
 }
 
-func Run() {
-	akiper.Run()
-}
-
 func main() {
-	Run()
+	Init()
+	Run(akiper)
 	tray.Tray(iconTray) //Create tray icon
 	app.Event <- app.EventToggleGUI
 	for { //Main Cycle

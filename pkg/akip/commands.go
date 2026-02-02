@@ -17,6 +17,7 @@ import (
 func (ui *AkipUI) connectionLoop() {
 	ui.Load()
 	defer ui.wg.Done()
+	defer log.Printf("Module Akip with name: %s --STOPED", ui.id)
 	defer ui.Save()
 	retry := time.Second
 	for {

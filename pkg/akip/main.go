@@ -2,6 +2,7 @@ package akip
 
 import (
 	"context"
+	"log"
 	"net"
 	"sync"
 )
@@ -39,6 +40,7 @@ func (ui *AkipUI) Load() {
 func (ui *AkipUI) Run() {
 	ui.wg.Add(1)
 	go ui.connectionLoop()
+	log.Printf("Module Akip with name: %s --STARTED", ui.id)
 }
 
 type AkipUI struct {
