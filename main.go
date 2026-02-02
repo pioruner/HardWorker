@@ -20,6 +20,7 @@ var iconApp []byte
 var fontI []byte
 
 func main() {
+
 	tray.Tray(iconTray) //Create tray icon
 	app.Event <- app.EventToggleGUI
 	for { //Main Cycle

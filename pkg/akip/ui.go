@@ -1,63 +1,176 @@
 package akip
 
-import "github.com/AllenDang/giu"
+import (
+	"fmt"
+	"net"
+	"strconv"
 
-type AkipW struct {
+	"github.com/AllenDang/giu"
+)
+
+type AkipUI struct {
 	adr          string
 	id           string
 	commandInput string // Текущая команда для ввода
 	lastResponse string // Последний ответ прибора
 	linedata     []int8
 	plotData     []float64
+
+	X, Y []float64
+
+	FPx, FPy, MacMult                                            float32
+	Hoffset, reper, square, vspeed, vtime, volume, minY, minMove string
+	auto                                                         bool
+
+	timeB int32
+
+	cursorMode CursorMode
+	cursorPos  [3]int32 // позиции курсоров (в индексах)
+
+	connected bool
+	conn      net.Conn
+	cmdCh     chan SCPICommand
+
+	xdt, xhoffs float64
+	xsize       int
 }
 
+type CursorMode int32
+
 const (
-	testAk = false
+	CursorStart CursorMode = iota
+	CursorReper
+	CursorFront
 )
 
-func New(adrPort string) *AkipW {
-	return &AkipW{
-		adr: adrPort,
+func Init(a string) *AkipUI {
+	return &AkipUI{
+		adr:   a,
+		cmdCh: make(chan SCPICommand, 8),
+		X:     []float64{0, 1, 2, 3},
+		Y:     []float64{1, 1, 1, 1},
+		xsize: 3,
 	}
 }
 
-func (ak *AkipW) Build() {
-	for _, w := range ak.UI() {
+func (ui *AkipUI) Build() {
+	for _, w := range ui.UI() {
 		w.Build()
 	}
 }
 
-func (ak *AkipW) UI() giu.Layout {
-	//_, h := giu.GetFramePadding()
+func (ui *AkipUI) Save() {
+	path, err := AppConfigPath()
+	if err == nil {
+		_ = SaveState(path, ui.ExportState())
+	}
+}
+
+func (ui *AkipUI) Load() {
+	path, err := AppConfigPath()
+	if err == nil {
+		if state, err := LoadState(path); err == nil {
+			ui.ImportState(state)
+		}
+	}
+}
+
+func drawCursor(x float64, yMin, yMax float64) giu.PlotWidget {
+	return giu.LineXY(
+		"",
+		[]float64{x, x},
+		[]float64{yMin, yMax},
+	)
+}
+
+func (ui *AkipUI) SetTime() {
+	ui.cmdCh <- SCPICommand{Cmd: fmt.Sprintf(":TIMebase:SCALe %s", TimeScaleS[ui.timeB])}
+}
+func (ui *AkipUI) SetOffset() {
+	hoff, err := strconv.ParseFloat(ui.Hoffset, 64)
+	if err != nil {
+		// плохой ввод — можно показать ошибку в UI
+		return
+	}
+	value := (hoff) / (TimeScale[ui.timeB] / 50.0)
+	ui.cmdCh <- SCPICommand{Cmd: fmt.Sprintf(":TIMebase:HOFFset %d", int(value*1e-6))}
+}
+
+func (ui *AkipUI) UI() giu.Layout {
+	ui.FPx, ui.FPy = giu.GetFramePadding()
+	ui.MacMult = 1
+	plots := []giu.PlotWidget{
+		giu.LineXY("Wave", ui.X, ui.Y), //ui.Y),
+	}
+
+	ConnectButton := "Подключить"
+	if ui.connected {
+		ConnectButton = "Отключить"
+	}
+
+	for i := 0; i < 3; i++ {
+		//x := ui.X[ui.cursorPos[i]]
+		x := float64(ui.cursorPos[i])
+		plots = append(plots, drawCursor(x, -150, 150))
+	}
 	return giu.Layout{
 		giu.Align(giu.AlignCenter).To(
 			giu.Style().SetFontSize(16).To(giu.Label("АКИП")), //Main Lable
 		),
 		giu.Separator(),
-		/*giu.Child().Size(giu.Auto, (14+(h*2)+2)*1).Border(false).Layout(
+		giu.Child().Size(-3, (14+(ui.FPy*2)+2)*ui.MacMult).Border(false).Layout(
 			giu.Row(
 				//giu.Style().SetFontSize(20).To(giu.InputText(&commandInput).Size(-200).Hint("Введите SCPI команду...")), //CMD for send
-				giu.InputText(&ak.adr).Size(-200).Hint("Введите IP:Port..."),
-				giu.Button("Проверить").Size(190, giu.Auto).OnClick(ak.test), //Send CMD
+				giu.InputText(&ui.adr).Size(150).Hint("Введите IP:Port...").Flags(giu.InputTextFlags(giu.AlignCenter)),
+				giu.Button(ConnectButton).Size(100, giu.Auto).OnClick(ui.toggleConnection), //Send CMD
+				//giu.Spacing(),
+				giu.Dummy(30, -1),
+				giu.Style().SetDisabled(!(ui.connected)).To(
+					giu.Combo("TimeBase", TimeScaleS[ui.timeB], TimeScaleS, &ui.timeB).Size(100).OnChange(ui.SetTime),
+					giu.InputText(&ui.Hoffset).Label("H Offset").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(ui.SetOffset),
+				),
+				giu.Dummy(10, -1),
 			)),
-		giu.Separator(),
-
-		giu.Child().Size(giu.Auto, (14+(h*2)+2)*1).Border(false).Layout(
+		giu.Style().SetDisabled(!(ui.connected)).To(
+			giu.Child().Size(-3, (14+(ui.FPy*2)+2)*ui.MacMult).Border(false).Layout(
+				giu.Row(
+					//giu.Dummy(50, -1),
+					giu.InputText(&ui.reper).Label("dL Reper").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(func() {}),
+					giu.InputText(&ui.square).Label("S Square").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(func() {}),
+					giu.Dummy(10, -1),
+					giu.InputText(&ui.vspeed).Label("Speed").Size(50).Flags(giu.InputTextFlagsReadOnly),
+					giu.InputText(&ui.vtime).Label("Time").Size(50).Flags(giu.InputTextFlagsReadOnly),
+					giu.InputText(&ui.volume).Label("Volume").Size(50).Flags(giu.InputTextFlagsReadOnly),
+					giu.Dummy(50, -1),
+					giu.InputText(&ui.minY).Label("Search minY").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(func() {}),
+					giu.InputText(&ui.minMove).Label("Search move").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(func() {}),
+					giu.RadioButton("Auto Search", ui.auto).
+						OnChange(func() { ui.auto = !ui.auto }),
+				)),
+			giu.Separator(),
+			giu.InputText(&ui.lastResponse).Size(giu.Auto).Flags(giu.InputTextFlagsReadOnly).Hint("Последний ответ прибора..."), //Response for CMD
+			giu.Separator(),
+			giu.Style().SetFontSize(14).To(
+				giu.Plot("Осцилограмма").Size(-3, -35-int(14+(ui.FPy*2)+2)*1).AxisLimits(ui.X[0], ui.X[ui.xsize], -150, 150, giu.ConditionAlways).Plots(
+					//giu.Line("", UtoF(ui.linedata)),
+					plots[0], plots[1], plots[2], plots[3],
+				)),
+			giu.Separator(),
+			giu.SliderInt(&ui.cursorPos[ui.cursorMode], int32(ui.X[0]), int32(ui.X[ui.xsize])).Size(-1),
+			giu.Separator(),
+			//giu.Child().Size(-3, (14+(ui.FPy*2)+2)*1).Border(false).Layout(
 			giu.Row(
-				//giu.Style().SetFontSize(20).To(giu.InputText(&commandInput).Size(-200).Hint("Введите SCPI команду...")), //CMD for send
-				giu.InputText(&ak.commandInput).Size(-200).Hint("Введите SCPI команду..."),
-				giu.Button("Отправить").Size(190, giu.Auto).OnClick(ak.send), //Send CMD
-			)),
+				giu.RadioButton("Start", ui.cursorMode == CursorStart).
+					OnChange(func() { ui.cursorMode = CursorStart }),
 
-		giu.Dummy(0, 5),
+				giu.RadioButton("Reper", ui.cursorMode == CursorReper).
+					OnChange(func() { ui.cursorMode = CursorReper }),
 
-		//giu.Label("Последний ответ прибора:"),
-		giu.InputText(&ak.lastResponse).Size(giu.Auto).Flags(giu.InputTextFlagsReadOnly).Hint("Последний ответ прибора..."), //Response for CMD
+				giu.RadioButton("Front", ui.cursorMode == CursorFront).
+					OnChange(func() { ui.cursorMode = CursorFront }),
 
-		giu.Dummy(0, 5),
-		giu.Style().SetFontSize(10).To(
-			giu.Plot("Осцилограмма").Size(-1, 300).AxisLimits(0, 1550, -150, 150, giu.ConditionAlways).Plots(
-				giu.Line("", UtoF(ak.linedata)), //ak.plotData),
-			)),*/
+				giu.InputText(&ui.vspeed).Label("TimeBase").Size(50).Flags(giu.InputTextFlagsReadOnly),
+			),
+		),
 	}
 }

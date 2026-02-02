@@ -10,12 +10,12 @@ import (
 )
 
 var (
-	akiper   *akip.AkipW
+	//akiper   *akip.AkipW
 	new_akip *akip.AkipUI
 )
 
 func init() {
-	akiper = akip.New("192.168.0.100:3000")
+	//akiper = akip.New("192.168.0.100:3000")
 	new_akip = akip.Init("192.168.0.100:3000")
 }
 
