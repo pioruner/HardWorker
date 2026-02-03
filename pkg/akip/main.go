@@ -58,7 +58,7 @@ type AkipUI struct {
 	timeB int32
 
 	cursorMode CursorMode
-	cursorPos  [3]int32 // позиции курсоров (в индексах)
+	cursorPos  [3]float32 // позиции курсоров (в индексах)
 
 	connected bool
 	conn      net.Conn
@@ -98,7 +98,7 @@ type AkipState struct {
 	MinMove string
 
 	CursorMode CursorMode
-	CursorPos  [3]int32
+	CursorPos  [3]float32
 }
 
 var TimeScale []float64 = []float64{

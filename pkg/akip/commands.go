@@ -35,7 +35,6 @@ func (ui *AkipUI) connectionLoop() {
 			}
 			ui.conn = conn
 
-			_ = conn.SetReadDeadline(time.Now().Add(time.Millisecond * 500))
 			ui.lastResponse = "Connected"
 			err = ui.sessionLoop()
 			conn.Close()
@@ -84,6 +83,7 @@ func (ui *AkipUI) ReadWave() error {
 		return err
 	}
 	header := make([]byte, 12)
+	_ = ui.conn.SetReadDeadline(time.Now().Add(time.Millisecond * 1000))
 	if _, err := io.ReadFull(ui.conn, header); err != nil {
 		ui.lastResponse = "Ошибка Read Header: " + err.Error()
 		ui.setUpdate()
@@ -119,12 +119,15 @@ func (ui *AkipUI) ReadWave() error {
 }
 
 func (ui *AkipUI) Calc() {
-	time := ui.cursorPos[2] - ui.cursorPos[0]
+	c0 := ui.cursorPos[0] / 2
+	c1 := ui.cursorPos[1] / 2
+	c2 := ui.cursorPos[2] / 2
+	time := c2 - c0
 	repSize, _ := strconv.ParseFloat(ui.reper, 64)
-	rep := repSize / (float64(ui.cursorPos[1]-ui.cursorPos[0]) / 1000000)
+	rep := repSize / (float64(c1-c0) / 1000000)
 	speed := rep / 100
 	sq, _ := strconv.ParseFloat(ui.square, 64)
-	volume := float64(time) * rep * sq
+	volume := float64(time) * rep * sq / 1000000
 	ui.vtime = fmt.Sprintf("%.2f", time)
 	ui.vspeed = fmt.Sprintf("%.2f", speed)
 	ui.volume = fmt.Sprintf("%.2f", volume)
@@ -163,8 +166,8 @@ func (ui *AkipUI) chanelUnpuck(buf []byte, index int) ([]int8, float64, float64)
 	log.Printf("hMove: %d", hMove)
 	dt := TimeScale[buf[index+27]-7]
 	log.Printf("dT: %f", dt)
-	hoffs := float64(math.Float32frombits(binary.LittleEndian.Uint32(buf[index : index+3])))
-	log.Printf("HOffest: %f", hoffs)
+	hoffs := float64(math.Float32frombits(binary.LittleEndian.Uint32(buf[index-12 : index+4-12])))
+	log.Printf("buff: % X  HOffest: %f,", buf[index-12:index+4-12], hoffs)
 	shift := index + 59
 	log.Printf("shift: %d", shift)
 	var wave = make([]int8, nData)

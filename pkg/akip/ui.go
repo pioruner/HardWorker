@@ -57,8 +57,10 @@ func (ui *AkipUI) UI() giu.Layout {
 		giu.Child().Size(-3, (14+(ui.FPy*2)+2)*ui.MacMult).Border(false).Layout(
 			giu.Row(
 				giu.RadioButton("Connection", ui.connected),
+				giu.Dummy(25, -1),
 				giu.Style().SetDisabled(!(ui.connected)).To(
 					giu.Combo("TimeBase", TimeScaleS[ui.timeB], TimeScaleS, &ui.timeB).Size(100).OnChange(ui.SetTime),
+					giu.Dummy(25, -1),
 					giu.InputText(&ui.Hoffset).Label("H Offset").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(ui.SetOffset),
 				),
 				giu.Dummy(10, -1),
@@ -67,11 +69,14 @@ func (ui *AkipUI) UI() giu.Layout {
 			giu.Child().Size(-3, (14+(ui.FPy*2)+2)*ui.MacMult).Border(false).Layout(
 				giu.Row(
 					giu.InputText(&ui.reper).Label("dL Reper").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(func() {}),
+					giu.Dummy(25, -1),
 					giu.InputText(&ui.square).Label("S Square").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(func() {}),
-					giu.Dummy(10, -1),
-					giu.InputText(&ui.vspeed).Label("Speed").Size(50).Flags(giu.InputTextFlagsReadOnly),
-					giu.InputText(&ui.vtime).Label("Time").Size(50).Flags(giu.InputTextFlagsReadOnly),
-					giu.InputText(&ui.volume).Label("Volume").Size(50).Flags(giu.InputTextFlagsReadOnly),
+					giu.Dummy(50, -1),
+					giu.InputText(&ui.vspeed).Label("Speed").Size(75).Flags(giu.InputTextFlagsReadOnly),
+					giu.Dummy(25, -1),
+					giu.InputText(&ui.vtime).Label("Time").Size(75).Flags(giu.InputTextFlagsReadOnly),
+					giu.Dummy(25, -1),
+					giu.InputText(&ui.volume).Label("Volume").Size(75).Flags(giu.InputTextFlagsReadOnly),
 				)),
 			giu.Separator(),
 			giu.InputText(&ui.lastResponse).Size(giu.Auto).Flags(giu.InputTextFlagsReadOnly).Hint("Последний ответ прибора..."), //Response for CMD
@@ -81,7 +86,7 @@ func (ui *AkipUI) UI() giu.Layout {
 					plots...,
 				)),
 			giu.Separator(),
-			giu.SliderInt(&ui.cursorPos[ui.cursorMode], int32(ui.X[0]), int32(ui.X[ui.xsize])).Size(-1),
+			giu.SliderFloat(&ui.cursorPos[ui.cursorMode], float32(ui.X[0]), float32(ui.X[ui.xsize])).Size(-1),
 			giu.Separator(),
 			giu.Row(
 				giu.RadioButton("Start", ui.cursorMode == CursorStart).

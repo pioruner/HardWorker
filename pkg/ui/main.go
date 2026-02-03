@@ -17,8 +17,8 @@ func close() bool {
 
 func GUI(iconApp []byte, fontI []byte, w ...giu.Widget) {
 	app.State.Gui = true
-	window := giu.NewMasterWindow("HardWorker", 1000, 450, giu.MasterWindowFlagsMaximized) // Create main window. giu.MasterWindowFlagsMaximized
-	img, _, err := image.Decode(bytes.NewReader(iconApp))                                  //Decode icon
+	window := giu.NewMasterWindow("HardWorker", 1000, 450, 0) // Create main window. giu.MasterWindowFlagsMaximized
+	img, _, err := image.Decode(bytes.NewReader(iconApp))     //Decode icon
 	if err == nil {
 		window.SetIcon(img) //Set icon
 	}
