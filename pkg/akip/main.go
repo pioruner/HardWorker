@@ -1,13 +1,13 @@
 package akip
 
 import (
-	"context"
 	"log"
 	"net"
-	"sync"
+
+	"github.com/pioruner/HardWorker.git/pkg/app"
 )
 
-func Init(adr string, name string, ctx context.Context, wg *sync.WaitGroup) *AkipUI {
+func Init(adr string, name string) *AkipUI {
 	return &AkipUI{
 		adr:    adr,
 		id:     name,
@@ -15,8 +15,6 @@ func Init(adr string, name string, ctx context.Context, wg *sync.WaitGroup) *Aki
 		X:      []float64{0, 1, 2, 3},
 		Y:      []float64{1, 1, 1, 1},
 		xsize:  3,
-		ctx:    ctx,
-		wg:     wg,
 		update: false,
 	}
 }
@@ -38,7 +36,7 @@ func (ui *AkipUI) Load() {
 }
 
 func (ui *AkipUI) Run() {
-	ui.wg.Add(1)
+	app.Wg.Add(1)
 	go ui.connectionLoop()
 	log.Printf("Module Akip with name: %s --STARTED", ui.id)
 }
@@ -69,8 +67,6 @@ type AkipUI struct {
 	xdt, xhoffs float64
 	xsize       int
 
-	ctx    context.Context
-	wg     *sync.WaitGroup
 	update bool
 }
 

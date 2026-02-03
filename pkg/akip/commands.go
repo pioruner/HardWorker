@@ -13,17 +13,19 @@ import (
 	"path/filepath"
 	"strconv"
 	"time"
+
+	"github.com/pioruner/HardWorker.git/pkg/app"
 )
 
 func (ui *AkipUI) connectionLoop() {
 	ui.Load()
-	defer ui.wg.Done()
+	defer app.Wg.Done()
 	defer log.Printf("Module Akip with name: %s --STOPED", ui.id)
 	defer ui.Save()
 	retry := time.Second
 	for {
 		select {
-		case <-ui.ctx.Done():
+		case <-app.Ctx.Done():
 			return
 		default:
 			conn, err := net.DialTimeout("tcp", ui.adr, time.Second)
@@ -56,7 +58,7 @@ func (ui *AkipUI) sessionLoop() error {
 
 	for {
 		select {
-		case <-ui.ctx.Done():
+		case <-app.Ctx.Done():
 			return nil
 
 		case <-ticker.C:

@@ -1,12 +1,11 @@
 package main
 
 import (
-	"context"
 	_ "embed"
 	"os"
-	"sync"
 	"time"
 
+	"github.com/AllenDang/giu"
 	"github.com/pioruner/HardWorker.git/pkg/akip"
 	"github.com/pioruner/HardWorker.git/pkg/app"
 	"github.com/pioruner/HardWorker.git/pkg/tray"
@@ -22,38 +21,30 @@ var iconApp []byte
 //go:embed assets/inter.ttf
 var fontI []byte
 
-var ctx, cancel = context.WithCancel(context.Background())
-var wg sync.WaitGroup
-
-type x interface {
-	Run()
-}
-
-func Run(modules ...x) {
-	for _, i := range modules {
-		i.Run()
-	}
-}
+var mod []app.Modules
+var uim []giu.Widget
 
 // HardWare
 var akiper *akip.AkipUI
 
 func Init() {
-	akiper = akip.Init("192.168.0.100:3000", "akip", ctx, &wg)
+	akiper = akip.Init("192.168.0.100:3000", "akip")
+	mod = append(mod, akiper)
+	uim = append(uim, akiper)
 }
 
 func main() {
 	Init()
-	Run(akiper)
+	app.Run(mod...)
 	tray.Tray(iconTray) //Create tray icon
 	app.Event <- app.EventToggleGUI
 	for { //Main Cycle
 		switch <-app.Event {
 		case app.EventToggleGUI:
-			ui.GUI(iconApp, fontI, akiper)
+			ui.GUI(iconApp, fontI, uim...)
 		case app.EventQuit:
-			cancel()
-			wg.Wait()
+			app.Cancel()
+			app.Wg.Wait()
 			os.Exit(0)
 		}
 		time.Sleep(time.Millisecond * 100)
@@ -62,8 +53,7 @@ func main() {
 
 //////// TODO //////////
 /*
-- Расчеты!
 - Определение смещения по данным от осцила
 - Информация на UI Hoffset & TimeBase
-- Курсор движение мышкой
+- Autosearch
 */

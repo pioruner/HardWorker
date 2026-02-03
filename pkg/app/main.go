@@ -1,6 +1,20 @@
 package app
 
-import "runtime"
+import (
+	"context"
+	"runtime"
+	"sync"
+)
+
+type Modules interface {
+	Run()
+}
+
+func Run(mod ...Modules) {
+	for _, i := range mod {
+		i.Run()
+	}
+}
 
 // Events
 type Events int
@@ -34,6 +48,10 @@ func init() {
 }
 
 // State
+
+var Ctx, Cancel = context.WithCancel(context.Background())
+var Wg sync.WaitGroup
+
 type AppState struct {
 	Gui bool
 }
