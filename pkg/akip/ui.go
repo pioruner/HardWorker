@@ -13,9 +13,9 @@ func (ui *AkipUI) Build() {
 	}
 }
 
-func drawCursor(x float64, yMin, yMax float64) giu.PlotWidget {
+func drawCursor(name string, x float64, yMin, yMax float64) giu.PlotWidget {
 	return giu.LineXY(
-		"",
+		name,
 		[]float64{x, x},
 		[]float64{yMin, yMax},
 	)
@@ -44,10 +44,10 @@ func (ui *AkipUI) UI() giu.Layout {
 	plots := []giu.PlotWidget{
 		giu.LineXY("Wave", ui.X, ui.Y),
 	}
-
+	names := []string{"Start", "Reper", "Front"}
 	for i := 0; i < 3; i++ {
 		x := float64(ui.cursorPos[i])
-		plots = append(plots, drawCursor(x, -150, 150))
+		plots = append(plots, drawCursor(names[i], x, -150, 150))
 	}
 	return giu.Layout{
 		giu.Align(giu.AlignCenter).To(
@@ -73,13 +73,6 @@ func (ui *AkipUI) UI() giu.Layout {
 					giu.InputText(&ui.vtime).Label("Time").Size(50).Flags(giu.InputTextFlagsReadOnly),
 					giu.InputText(&ui.volume).Label("Volume").Size(50).Flags(giu.InputTextFlagsReadOnly),
 				)),
-			giu.Child().Size(-3, (14+(ui.FPy*2)+2)*ui.MacMult).Border(false).Layout(
-				giu.Row(
-					giu.InputText(&ui.minY).Label("Search minY").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(func() {}),
-					giu.InputText(&ui.minMove).Label("Search move").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(func() {}),
-					giu.RadioButton("Auto Search", ui.auto).
-						OnChange(func() { ui.auto = !ui.auto }),
-				)),
 			giu.Separator(),
 			giu.InputText(&ui.lastResponse).Size(giu.Auto).Flags(giu.InputTextFlagsReadOnly).Hint("Последний ответ прибора..."), //Response for CMD
 			giu.Separator(),
@@ -99,8 +92,14 @@ func (ui *AkipUI) UI() giu.Layout {
 
 				giu.RadioButton("Front", ui.cursorMode == CursorFront).
 					OnChange(func() { ui.cursorMode = CursorFront }),
-
-				giu.InputText(&ui.vspeed).Label("TimeBase").Size(50).Flags(giu.InputTextFlagsReadOnly),
+				giu.Dummy(10, -1),
+				giu.InputText(&ui.Atime).Label("TimeBase").Size(50).Flags(giu.InputTextFlagsReadOnly),
+				giu.InputText(&ui.Aoffset).Label("HOffset").Size(50).Flags(giu.InputTextFlagsReadOnly),
+				giu.Dummy(10, -1),
+				giu.InputText(&ui.minY).Label("Search minY").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(func() {}),
+				giu.InputText(&ui.minMove).Label("Search move").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(func() {}),
+				giu.RadioButton("Auto Search", ui.auto).
+					OnChange(func() { ui.auto = !ui.auto }),
 			),
 		),
 	}

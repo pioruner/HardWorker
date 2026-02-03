@@ -67,7 +67,8 @@ type AkipUI struct {
 	xdt, xhoffs float64
 	xsize       int
 
-	update bool
+	update         bool
+	Atime, Aoffset string
 }
 
 type CursorMode int32
