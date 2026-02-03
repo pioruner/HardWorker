@@ -101,6 +101,9 @@ func (ui *AkipUI) ReadWave() error {
 	packet = append(packet, payload...)
 	var dt, hoffs float64
 	ui.linedata, dt, hoffs = ui.binUnpuck(packet, true)
+	dt = dt * 1000000
+	ui.Atime = fmt.Sprintf("%.1f", dt)
+	ui.Aoffset = fmt.Sprintf("%.1f", hoffs)
 	dt = TimeScale[ui.timeB] * 15.2 / 3040 * 1000000
 	hoffs, _ = strconv.ParseFloat(ui.Hoffset, 64)
 	ui.plotData = UtoF(ui.linedata)
