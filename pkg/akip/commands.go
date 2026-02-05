@@ -119,7 +119,11 @@ func (ui *AkipUI) ReadWave() error {
 	inx, offs_new, find := ui.findPeak()
 	if find {
 		ui.cursorPos[2] = float32(ui.X[inx])
-		ui.Hoffset = fmt.Sprintf("%.0f", hoffs+offs_new)
+		//log.Printf("New Offset%s, new Peak:%f", fmt.Sprintf("%.0f", hoffs-offs_new), float32(ui.X[inx]))
+		if offs_new != 0 {
+			ui.Hoffset = fmt.Sprintf("%.0f", hoffs-offs_new)
+			ui.SetOffset()
+		}
 	}
 	ui.Calc()
 	ui.setUpdate()
@@ -145,18 +149,23 @@ func (ui *AkipUI) findPeak() (int, float64, bool) {
 	if ui.auto {
 		minx, maxx := -1, -1
 		for i, x := range ui.X {
-			if x > ui.X[i] && x < ui.X[i] {
+			if x > float64(ui.cursorPos[2])-0.5 && x < float64(ui.cursorPos[2])+0.5 {
 				if minx < 0 {
 					minx = i
 				}
 				maxx = i
 			}
 		}
+		if minx < 0 || maxx < 0 {
+			return 0, 0, false
+		}
+		log.Printf("min:%d, max:%d, timeS:%f, timeE:%f", minx, maxx, ui.X[minx], ui.X[maxx])
 		maxy, maxy_index := -1.0, 1
-		for i, x := range ui.Y[minx:maxx] {
-			if x > maxy {
-				maxy = x
+		for i := minx; i < maxx; i++ {
+			if ui.Y[i] > maxy {
+				maxy = ui.Y[i]
 				maxy_index = i
+				//log.Printf("Value: %f, Index: %d, Time: %f", x, i, ui.X[i])
 			}
 		}
 		offset := ui.X[len(ui.X)/2] - ui.X[maxy_index]
@@ -166,7 +175,7 @@ func (ui *AkipUI) findPeak() (int, float64, bool) {
 		if maxy > minR {
 			reply = true
 		}
-		if offset < minMove {
+		if math.Abs(offset) < minMove {
 			offset = 0
 		}
 		return maxy_index, offset, reply
@@ -186,13 +195,13 @@ func (ui *AkipUI) SendCMD(cmd string) error {
 
 func (ui *AkipUI) binUnpuck(buf []byte, ch1 bool) ([]int8, float64, float64) {
 	size := binary.LittleEndian.Uint16(buf[0:2])
-	log.Print("Размер осцилограммы: ")
-	log.Println(size)
+	//log.Print("Размер осцилограммы: ")
+	//log.Println(size)
 	dataBuf := buf[12:size]
 	ch1_index := bytes.Index(dataBuf, []byte{0x43, 0x48, 0x31})
-	log.Printf("CH1 Index: %d", ch1_index)
+	//log.Printf("CH1 Index: %d", ch1_index)
 	ch2_index := bytes.Index(dataBuf, []byte{0x43, 0x48, 0x32})
-	log.Printf("CH2 Index: %d", ch2_index)
+	//log.Printf("CH2 Index: %d", ch2_index)
 	if ch1 {
 		return ui.chanelUnpuck(dataBuf, ch1_index)
 	} else {
@@ -203,15 +212,15 @@ func (ui *AkipUI) binUnpuck(buf []byte, ch1 bool) ([]int8, float64, float64) {
 
 func (ui *AkipUI) chanelUnpuck(buf []byte, index int) ([]int8, float64, float64) {
 	nData := int(binary.LittleEndian.Uint16(buf[index+15 : index+17]))
-	log.Printf("NDATA: %d", nData)
+	//log.Printf("NDATA: %d", nData)
 	hMove := binary.LittleEndian.Uint16(buf[index+31 : index+33])
-	log.Printf("hMove: %d", hMove)
+	//log.Printf("hMove: %d", hMove)
 	dt := TimeScale[buf[index+27]-7]
-	log.Printf("dT: %f", dt)
+	//log.Printf("dT: %f", dt)
 	hoffs := float64(math.Float32frombits(binary.LittleEndian.Uint32(buf[index-12 : index+4-12])))
-	log.Printf("buff: % X  HOffest: %f,", buf[index-12:index+4-12], hoffs)
+	//log.Printf("buff: % X  HOffest: %f,", buf[index-12:index+4-12], hoffs)
 	shift := index + 59
-	log.Printf("shift: %d", shift)
+	//log.Printf("shift: %d", shift)
 	var wave = make([]int8, nData)
 	for i := 0; i < nData; i++ {
 		wave[i] = int8(binary.LittleEndian.Uint16(buf[shift:shift+2]) + hMove)
