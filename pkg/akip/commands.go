@@ -116,6 +116,11 @@ func (ui *AkipUI) ReadWave() error {
 	ui.xdt = dt
 	ui.xsize = len(ui.plotData) - 1
 	ui.connected = true
+	inx, offs_new, find := ui.findPeak()
+	if find {
+		ui.cursorPos[2] = float32(ui.X[inx])
+		ui.Hoffset = fmt.Sprintf("%.0f", hoffs+offs_new)
+	}
 	ui.Calc()
 	ui.setUpdate()
 	return nil
@@ -134,6 +139,40 @@ func (ui *AkipUI) Calc() {
 	ui.vtime = fmt.Sprintf("%.2f", time)
 	ui.vspeed = fmt.Sprintf("%.2f", speed)
 	ui.volume = fmt.Sprintf("%.2f", volume)
+}
+
+func (ui *AkipUI) findPeak() (int, float64, bool) {
+	if ui.auto {
+		minx, maxx := -1, -1
+		for i, x := range ui.X {
+			if x > ui.X[i] && x < ui.X[i] {
+				if minx < 0 {
+					minx = i
+				}
+				maxx = i
+			}
+		}
+		maxy, maxy_index := -1.0, 1
+		for i, x := range ui.Y[minx:maxx] {
+			if x > maxy {
+				maxy = x
+				maxy_index = i
+			}
+		}
+		offset := ui.X[len(ui.X)/2] - ui.X[maxy_index]
+		minR, _ := strconv.ParseFloat(ui.minY, 64)
+		minMove, _ := strconv.ParseFloat(ui.minMove, 64)
+		reply := false
+		if maxy > minR {
+			reply = true
+		}
+		if offset < minMove {
+			offset = 0
+		}
+		return maxy_index, offset, reply
+
+	}
+	return 0, 0, false
 }
 
 func (ui *AkipUI) SendCMD(cmd string) error {
