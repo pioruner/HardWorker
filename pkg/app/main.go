@@ -39,6 +39,7 @@ var (
 var (
 	MacOS         bool
 	MacMultiperUI float64
+	AppName       string = string("АКИП УЗ")
 )
 
 func init() {

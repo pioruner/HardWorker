@@ -27,7 +27,7 @@ func Tray(icon []byte) {
 
 func (a *TrayData) onReady() {
 	//Настройка
-	systray.SetTitle("HardWorker")
+	systray.SetTitle(app.AppName)
 	systray.SetTooltip("Управление устройствами")
 	//Меню
 	TD.mToggle = systray.AddMenuItem("Показать/скрыть окно", "Переключить видимость окна")

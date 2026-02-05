@@ -159,7 +159,7 @@ func (ui *AkipUI) findPeak() (int, float64, bool) {
 		if minx < 0 || maxx < 0 {
 			return 0, 0, false
 		}
-		log.Printf("min:%d, max:%d, timeS:%f, timeE:%f", minx, maxx, ui.X[minx], ui.X[maxx])
+		//log.Printf("min:%d, max:%d, timeS:%f, timeE:%f", minx, maxx, ui.X[minx], ui.X[maxx])
 		maxy, maxy_index := -1.0, 1
 		for i := minx; i < maxx; i++ {
 			if ui.Y[i] > maxy {
@@ -293,7 +293,7 @@ func (ui *AkipUI) ExportState() AkipState {
 func (ui *AkipUI) ImportState(s AkipState) {
 	ui.adr = s.Adr
 	ui.timeB = s.TimeB
-	ui.auto = s.Auto
+	ui.auto = false //s.Auto
 	ui.Hoffset = s.Hoffset
 	ui.reper = s.Reper
 	ui.square = s.Square

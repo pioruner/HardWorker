@@ -22,6 +22,9 @@ func drawCursor(name string, x float64, yMin, yMax float64) giu.PlotWidget {
 }
 
 func (ui *AkipUI) SetTime() {
+	if ui.timeB > 2 {
+		ui.auto = false
+	}
 	ui.cmdCh <- SCPICommand{Cmd: fmt.Sprintf(":TIMebase:SCALe %s", TimeScaleS[ui.timeB])}
 }
 func (ui *AkipUI) SetOffset() {
@@ -42,41 +45,49 @@ func (ui *AkipUI) UI() giu.Layout {
 	ui.MacMult = 1
 
 	plots := []giu.PlotWidget{
-		giu.LineXY("Wave", ui.X, ui.Y),
+		giu.LineXY("УЗ Волна", ui.X, ui.Y),
 	}
-	names := []string{"Start", "Reper", "Front"}
+	names := []string{"Начало", "Репер", "Граница"}
 	for i := 0; i < 3; i++ {
 		x := float64(ui.cursorPos[i])
 		plots = append(plots, drawCursor(names[i], x, -150, 150))
 	}
+	if ui.auto {
+		ui.autostr = "Вкл."
+	} else {
+		ui.autostr = "Выкл."
+	}
 	return giu.Layout{
-		giu.Align(giu.AlignCenter).To(
-			giu.Style().SetFontSize(16).To(giu.Label("АКИП")), //Main Lable
-		),
-		giu.Separator(),
 		giu.Child().Size(-3, (14+(ui.FPy*2)+2)*ui.MacMult).Border(false).Layout(
 			giu.Row(
-				giu.RadioButton("Connection", ui.connected),
-				giu.Dummy(25, -1),
 				giu.Style().SetDisabled(!(ui.connected)).To(
-					giu.Combo("TimeBase", TimeScaleS[ui.timeB], TimeScaleS, &ui.timeB).Size(100).OnChange(ui.SetTime),
+					giu.Label("Развертка"),
+					giu.Combo("мкс", TimeScaleS[ui.timeB], TimeScaleS, &ui.timeB).Size(100).OnChange(ui.SetTime),
 					giu.Dummy(25, -1),
-					giu.InputText(&ui.Hoffset).Label("H Offset").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(ui.SetOffset),
+					giu.Label("Смещение"),
+					giu.InputText(&ui.Hoffset).Label("мкс").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(ui.SetOffset),
+					giu.Dummy(25, -1),
+					giu.Label("Репер"),
+					giu.InputText(&ui.reper).Label("dL см").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(func() {}),
+					giu.Dummy(25, -1),
+					giu.Label("Площадь трубки"),
+					giu.InputText(&ui.square).Label("см^2").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(func() {}),
+					giu.Align(giu.AlignRight).To(giu.RadioButton("Связь", ui.connected)),
 				),
-				giu.Dummy(10, -1),
 			)),
 		giu.Style().SetDisabled(!(ui.connected)).To(
 			giu.Child().Size(-3, (14+(ui.FPy*2)+2)*ui.MacMult).Border(false).Layout(
 				giu.Row(
-					giu.InputText(&ui.reper).Label("dL Reper").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(func() {}),
+
+					//giu.Dummy(50, -1),
+					giu.Label("Скорость волны"),
+					giu.InputText(&ui.vspeed).Label("м/с").Size(75).Flags(giu.InputTextFlagsReadOnly),
 					giu.Dummy(25, -1),
-					giu.InputText(&ui.square).Label("S Square").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(func() {}),
-					giu.Dummy(50, -1),
-					giu.InputText(&ui.vspeed).Label("Speed").Size(75).Flags(giu.InputTextFlagsReadOnly),
+					giu.Label("Время волны"),
+					giu.InputText(&ui.vtime).Label("мкс").Size(75).Flags(giu.InputTextFlagsReadOnly),
 					giu.Dummy(25, -1),
-					giu.InputText(&ui.vtime).Label("Time").Size(75).Flags(giu.InputTextFlagsReadOnly),
-					giu.Dummy(25, -1),
-					giu.InputText(&ui.volume).Label("Volume").Size(75).Flags(giu.InputTextFlagsReadOnly),
+					giu.Label("Объём фазы"),
+					giu.InputText(&ui.volume).Label("см^3").Size(75).Flags(giu.InputTextFlagsReadOnly),
 				)),
 			giu.Separator(),
 			giu.InputText(&ui.lastResponse).Size(giu.Auto).Flags(giu.InputTextFlagsReadOnly).Hint("Последний ответ прибора..."), //Response for CMD
@@ -89,22 +100,31 @@ func (ui *AkipUI) UI() giu.Layout {
 			giu.SliderFloat(&ui.cursorPos[ui.cursorMode], float32(ui.X[0]), float32(ui.X[ui.xsize])).Size(-1),
 			giu.Separator(),
 			giu.Row(
-				giu.RadioButton("Start", ui.cursorMode == CursorStart).
+				giu.Label("Курсоры: "),
+				giu.RadioButton("Старт", ui.cursorMode == CursorStart).
 					OnChange(func() { ui.cursorMode = CursorStart }),
 
-				giu.RadioButton("Reper", ui.cursorMode == CursorReper).
+				giu.RadioButton("Репер", ui.cursorMode == CursorReper).
 					OnChange(func() { ui.cursorMode = CursorReper }),
 
-				giu.RadioButton("Front", ui.cursorMode == CursorFront).
+				giu.RadioButton("Граница", ui.cursorMode == CursorFront).
 					OnChange(func() { ui.cursorMode = CursorFront }),
-				giu.Dummy(10, -1),
-				giu.InputText(&ui.Atime).Label("TimeBase").Size(50).Flags(giu.InputTextFlagsReadOnly),
-				giu.InputText(&ui.Aoffset).Label("HOffset").Size(50).Flags(giu.InputTextFlagsReadOnly),
-				giu.Dummy(10, -1),
-				giu.InputText(&ui.minY).Label("Search minY").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(func() {}),
-				giu.InputText(&ui.minMove).Label("Search move").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(func() {}),
-				giu.RadioButton("Auto Search", ui.auto).
-					OnChange(func() { ui.auto = !ui.auto }),
+				giu.Dummy(25, -1),
+				/*
+					giu.InputText(&ui.Atime).Label("TimeBase").Size(50).Flags(giu.InputTextFlagsReadOnly),
+					giu.InputText(&ui.Aoffset).Label("HOffset").Size(50).Flags(giu.InputTextFlagsReadOnly),
+					giu.Dummy(10, -1),
+				*/
+				giu.Label("Мин. Y"),
+				giu.InputText(&ui.minY).Label("ед.").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(func() {}),
+				giu.Dummy(25, -1),
+				giu.Label("Мин. смещение"),
+				giu.InputText(&ui.minMove).Label("мкс").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(func() {}),
+				giu.Dummy(25, -1),
+				giu.Style().SetDisabled(ui.timeB > 2).To(
+					giu.Label("Автопоиск"),
+					giu.RadioButton("", ui.auto).
+						OnChange(func() { ui.auto = !ui.auto })),
 			),
 		),
 	}
