@@ -52,11 +52,7 @@ func (ui *AkipUI) UI() giu.Layout {
 		x := float64(ui.cursorPos[i])
 		plots = append(plots, drawCursor(names[i], x, -150, 150))
 	}
-	if ui.auto {
-		ui.autostr = "Вкл."
-	} else {
-		ui.autostr = "Выкл."
-	}
+
 	return giu.Layout{
 		giu.Child().Size(-3, (14+(ui.FPy*2)+2)*ui.MacMult).Border(false).Layout(
 			giu.Row(
