@@ -30,6 +30,7 @@ func (ui *AkipUI) connectionLoop() {
 		default:
 			conn, err := net.DialTimeout("tcp", ui.adr, time.Second)
 			if err != nil {
+				ui.lastResponse = err.Error()
 				time.Sleep(retry)
 				continue
 			}
@@ -100,28 +101,30 @@ func (ui *AkipUI) ReadWave() error {
 	packet = append(packet, header...)
 	packet = append(packet, payload...)
 	var dt, hoffs float64
-	ui.linedata, dt, hoffs = ui.binUnpuck(packet, true)
-	dt = dt * 1000000
+	var ndata int
+	ui.linedata, dt, hoffs, ndata = ui.binUnpuck(packet, true)
+	ui.xsize = ndata - 1
+	//dt = dt * 15.2 / float64(ndata) * 1000000
 	ui.Atime = fmt.Sprintf("%.1f", dt)
 	ui.Aoffset = fmt.Sprintf("%.1f", hoffs)
-	dt = TimeScale[ui.timeB] * 15.2 / 3040 * 1000000
-	hoffs, _ = strconv.ParseFloat(ui.Hoffset, 64)
+	dt = TimeScale[ui.timeB] * 15.2 / float64(ndata) * 1000000
+	//hoffs, _ = strconv.ParseFloat(ui.Hoffset, 64)
 	ui.plotData = UtoF(ui.linedata)
 	ui.Y = ui.plotData
-	ui.X = make([]float64, len(ui.plotData))
-	for i := 0; i < len(ui.plotData); i++ {
-		ui.X[i] = (float64(i) * dt) + hoffs
+	ui.X = make([]float64, ndata)
+	for i := -ndata / 2; i < ndata/2; i++ {
+		ui.X[i+ndata/2] = (float64(i) * dt) + hoffs
 	}
+	//log.Printf("X0: %f", ui.X[0])
 	ui.xhoffs = hoffs
 	ui.xdt = dt
-	ui.xsize = len(ui.plotData) - 1
 	ui.connected = true
 	inx, offs_new, find := ui.findPeak()
 	if find {
 		ui.cursorPos[2] = float32(ui.X[inx])
-		//log.Printf("New Offset%s, new Peak:%f", fmt.Sprintf("%.0f", hoffs-offs_new), float32(ui.X[inx]))
+		log.Printf("New Offset%s, new Peak:%f", fmt.Sprintf("%.0f", hoffs-offs_new-baseOffest[ui.timeB]), float32(ui.X[inx]))
 		if offs_new != 0 {
-			ui.Hoffset = fmt.Sprintf("%.0f", hoffs-offs_new)
+			ui.Hoffset = fmt.Sprintf("%.0f", hoffs-offs_new-baseOffest[ui.timeB])
 			ui.SetOffset()
 		}
 	}
@@ -190,10 +193,11 @@ func (ui *AkipUI) SendCMD(cmd string) error {
 	}
 	ui.lastResponse = string(cmd)
 	ui.setUpdate()
+	time.Sleep(time.Second)
 	return nil
 }
 
-func (ui *AkipUI) binUnpuck(buf []byte, ch1 bool) ([]int8, float64, float64) {
+func (ui *AkipUI) binUnpuck(buf []byte, ch1 bool) ([]int8, float64, float64, int) {
 	size := binary.LittleEndian.Uint16(buf[0:2])
 	//log.Print("Размер осцилограммы: ")
 	//log.Println(size)
@@ -210,12 +214,12 @@ func (ui *AkipUI) binUnpuck(buf []byte, ch1 bool) ([]int8, float64, float64) {
 
 }
 
-func (ui *AkipUI) chanelUnpuck(buf []byte, index int) ([]int8, float64, float64) {
+func (ui *AkipUI) chanelUnpuck(buf []byte, index int) ([]int8, float64, float64, int) {
 	nData := int(binary.LittleEndian.Uint16(buf[index+15 : index+17]))
 	//log.Printf("NDATA: %d", nData)
 	hMove := binary.LittleEndian.Uint16(buf[index+31 : index+33])
 	//log.Printf("hMove: %d", hMove)
-	dt := TimeScale[buf[index+27]-7]
+	//dt := TimeScale[buf[index+27]-7]
 	//log.Printf("dT: %f", dt)
 	hoffs := float64(math.Float32frombits(binary.LittleEndian.Uint32(buf[index-12 : index+4-12])))
 	//log.Printf("buff: % X  HOffest: %f,", buf[index-12:index+4-12], hoffs)
@@ -226,7 +230,7 @@ func (ui *AkipUI) chanelUnpuck(buf []byte, index int) ([]int8, float64, float64)
 		wave[i] = int8(binary.LittleEndian.Uint16(buf[shift:shift+2]) + hMove)
 		shift += 2
 	}
-	return wave[len(wave)/2:], dt, hoffs
+	return wave, 0, hoffs, nData
 }
 
 func UtoF(data []int8) []float64 {

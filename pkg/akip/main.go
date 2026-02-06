@@ -120,3 +120,13 @@ var TimeScaleS []string = []string{
 	"50us",
 	"100us",
 }
+
+var baseOffest []float64 = []float64{
+	7.6 * 1,
+	7.6 * 2,
+	7.6 * 5,
+	7.6 * 10,
+	7.6 * 20,
+	7.6 * 50,
+	7.6 * 100,
+}

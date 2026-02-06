@@ -26,13 +26,14 @@ func (ui *AkipUI) SetTime() {
 		ui.auto = false
 	}
 	ui.cmdCh <- SCPICommand{Cmd: fmt.Sprintf(":TIMebase:SCALe %s", TimeScaleS[ui.timeB])}
+	ui.SetOffset()
 }
 func (ui *AkipUI) SetOffset() {
 	hoff, err := strconv.ParseFloat(ui.Hoffset, 64)
 	if err != nil {
 		return
 	}
-	value := (hoff) / (TimeScale[ui.timeB] / 50.0)
+	value := (hoff + baseOffest[ui.timeB]) / (TimeScale[ui.timeB] / 50.0)
 	ui.cmdCh <- SCPICommand{Cmd: fmt.Sprintf(":TIMebase:HOFFset %d", int(value*1e-6))}
 }
 
