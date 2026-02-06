@@ -50,7 +50,7 @@ func (ui *AkipUI) connectionLoop() {
 }
 
 func (ui *AkipUI) sessionLoop() error {
-	ticker := time.NewTicker(500 * time.Millisecond)
+	ticker := time.NewTicker(200 * time.Millisecond)
 	defer ticker.Stop()
 	ui.cmdCh <- SCPICommand{Cmd: ":SDSLSCPI#"}
 	ui.SetTime()
@@ -122,7 +122,7 @@ func (ui *AkipUI) ReadWave() error {
 	inx, offs_new, find := ui.findPeak()
 	if find {
 		ui.cursorPos[2] = float32(ui.X[inx])
-		log.Printf("New Offset%s, new Peak:%f", fmt.Sprintf("%.0f", hoffs-offs_new-baseOffest[ui.timeB]), float32(ui.X[inx]))
+		//log.Printf("New Offset%s, new Peak:%f", fmt.Sprintf("%.0f", hoffs-offs_new-baseOffest[ui.timeB]), float32(ui.X[inx]))
 		if offs_new != 0 {
 			ui.Hoffset = fmt.Sprintf("%.0f", hoffs-offs_new-baseOffest[ui.timeB])
 			ui.SetOffset()
@@ -193,7 +193,7 @@ func (ui *AkipUI) SendCMD(cmd string) error {
 	}
 	ui.lastResponse = string(cmd)
 	ui.setUpdate()
-	time.Sleep(time.Second)
+	time.Sleep(time.Millisecond * 200)
 	return nil
 }
 
