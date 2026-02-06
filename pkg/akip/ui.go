@@ -107,9 +107,12 @@ func (ui *AkipUI) UI() giu.Layout {
 					OnChange(func() { ui.cursorMode = CursorFront }),
 				giu.Dummy(25, -1),
 				/*
-					giu.InputText(&ui.Atime).Label("TimeBase").Size(50).Flags(giu.InputTextFlagsReadOnly),
-					giu.InputText(&ui.Aoffset).Label("HOffset").Size(50).Flags(giu.InputTextFlagsReadOnly),
-					giu.Dummy(10, -1),
+					giu.Label("Развертка"),
+					giu.InputText(&ui.Atime).Label("мкс").Size(50).Flags(giu.InputTextFlagsReadOnly),
+					giu.Dummy(25, -1),
+					giu.Label("Смещение"),
+					giu.InputText(&ui.Aoffset).Label("мкс").Size(50).Flags(giu.InputTextFlagsReadOnly),
+					giu.Dummy(25, -1),
 				*/
 				giu.Label("Мин. Y"),
 				giu.InputText(&ui.minY).Label("ед.").Size(50).Hint("").Flags(giu.InputTextFlagsCharsDecimal).OnChange(func() {}),

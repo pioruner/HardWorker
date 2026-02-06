@@ -3,6 +3,7 @@ package main
 import (
 	_ "embed"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/AllenDang/giu"
@@ -34,6 +35,7 @@ func Init() {
 }
 
 func main() {
+	runtime.LockOSThread()
 	Init()
 	app.Run(mod...)
 	tray.Tray(iconTray) //Create tray icon
