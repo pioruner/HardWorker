@@ -2,8 +2,11 @@ package app
 
 import (
 	"context"
+	"log"
+	"net"
 	"runtime"
 	"sync"
+	"time"
 )
 
 type Modules interface {
@@ -62,5 +65,38 @@ var State *AppState
 func init() {
 	State = &AppState{
 		Gui: false,
+	}
+}
+
+const (
+	tcpHost = "127.0.0.1:54424"
+)
+
+func CheckInstatse() bool {
+	conn, err := net.DialTimeout("tcp", tcpHost, time.Millisecond*100)
+	if err == nil {
+		conn.Close()
+		return true
+	}
+	go startTCPListener()
+	return false
+}
+
+func startTCPListener() {
+	l, err := net.Listen("tcp", tcpHost)
+	if err != nil {
+		log.Println("Cannot start TCP listener:", err)
+		return
+	}
+	defer l.Close()
+
+	for {
+		_, err := l.Accept()
+		if err != nil {
+			continue
+		}
+		if State.Gui {
+			Event <- EventToggleGUI
+		}
 	}
 }
