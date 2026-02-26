@@ -1,45 +1,14 @@
 package akip
 
 import (
+	"encoding/json"
 	"log"
 	"net"
+	"os"
+	"path/filepath"
 
 	"github.com/pioruner/HardWorker.git/pkg/app"
 )
-
-func Init(adr string, name string) *AkipUI {
-	return &AkipUI{
-		adr:    adr,
-		id:     name,
-		cmdCh:  make(chan SCPICommand, 8),
-		X:      []float64{0, 1, 2, 3},
-		Y:      []float64{1, 1, 1, 1},
-		xsize:  3,
-		update: false,
-	}
-}
-
-func (ui *AkipUI) Save() {
-	path, err := AppConfigPath(ui.id)
-	if err == nil {
-		_ = SaveState(path, ui.ExportState())
-	}
-}
-
-func (ui *AkipUI) Load() {
-	path, err := AppConfigPath(ui.id)
-	if err == nil {
-		if state, err := LoadState(path); err == nil {
-			ui.ImportState(state)
-		}
-	}
-}
-
-func (ui *AkipUI) Run() {
-	app.Wg.Add(1)
-	go ui.connectionLoop()
-	log.Printf("Module Akip with name: %s --STARTED", ui.id)
-}
 
 type AkipUI struct {
 	adr          string
@@ -129,4 +98,108 @@ var baseOffest []float64 = []float64{
 	7.6 * 20,
 	7.6 * 50,
 	7.6 * 100,
+}
+
+func Init(adr string, name string) *AkipUI {
+	return &AkipUI{
+		adr:    adr,
+		id:     name,
+		cmdCh:  make(chan SCPICommand, 8),
+		X:      []float64{0, 1, 2, 3},
+		Y:      []float64{1, 1, 1, 1},
+		xsize:  3,
+		update: false,
+	}
+}
+
+func (ui *AkipUI) Run() {
+	app.Wg.Add(1)
+	go ui.connectionLoop()
+	log.Printf("Module Akip with name: %s --STARTED", ui.id)
+}
+
+// LOAD && SAVE
+
+func (ui *AkipUI) Save() {
+	path, err := AppConfigPath(ui.id)
+	if err == nil {
+		_ = SaveState(path, ui.ExportState())
+	}
+}
+
+func (ui *AkipUI) Load() {
+	path, err := AppConfigPath(ui.id)
+	if err == nil {
+		if state, err := LoadState(path); err == nil {
+			ui.ImportState(state)
+		}
+	}
+}
+
+func AppConfigPath(name string) (string, error) {
+	base, err := os.UserConfigDir()
+	if err != nil {
+		return "", err
+	}
+
+	dir := filepath.Join(base, "HardWorker")
+	err = os.MkdirAll(dir, 0755)
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(dir, name+".json"), nil
+}
+
+func LoadState(path string) (AkipState, error) {
+	var state AkipState
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return state, err
+	}
+	err = json.Unmarshal(data, &state)
+	return state, err
+}
+
+func SaveState(path string, state AkipState) error {
+	data, err := json.MarshalIndent(state, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0644)
+}
+
+func (ui *AkipUI) ExportState() AkipState {
+	return AkipState{
+		Adr:        ui.adr,
+		TimeB:      ui.timeB,
+		Auto:       ui.auto,
+		Hoffset:    ui.Hoffset,
+		Reper:      ui.reper,
+		Square:     ui.square,
+		Vspeed:     ui.vspeed,
+		Vtime:      ui.vtime,
+		Volume:     ui.volume,
+		MinY:       ui.minY,
+		MinMove:    ui.minMove,
+		CursorMode: ui.cursorMode,
+		CursorPos:  ui.cursorPos,
+	}
+}
+
+func (ui *AkipUI) ImportState(s AkipState) {
+	ui.adr = s.Adr
+	ui.timeB = s.TimeB
+	ui.auto = false //s.Auto
+	ui.Hoffset = s.Hoffset
+	ui.reper = s.Reper
+	ui.square = s.Square
+	ui.vspeed = s.Vspeed
+	ui.vtime = s.Vtime
+	ui.volume = s.Volume
+	ui.minY = s.MinY
+	ui.minMove = s.MinMove
+	ui.cursorMode = s.CursorMode
+	ui.cursorPos = s.CursorPos
 }

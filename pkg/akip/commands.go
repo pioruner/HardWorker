@@ -3,14 +3,11 @@ package akip
 import (
 	"bytes"
 	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"math"
 	"net"
-	"os"
-	"path/filepath"
 	"strconv"
 	"time"
 
@@ -104,25 +101,23 @@ func (ui *AkipUI) ReadWave() error {
 	var ndata int
 	ui.linedata, dt, hoffs, ndata = ui.binUnpuck(packet, true)
 	ui.xsize = ndata - 1
-	//dt = dt * 15.2 / float64(ndata) * 1000000
+	//dt = dt * 15.2 / float64(ndata) * 1000000  // для пересчета dt полученного от осцилографа
 	ui.Atime = fmt.Sprintf("%.1f", dt)
 	ui.Aoffset = fmt.Sprintf("%.1f", hoffs)
 	dt = TimeScale[ui.timeB] * 15.2 / float64(ndata) * 1000000
-	//hoffs, _ = strconv.ParseFloat(ui.Hoffset, 64)
+	//hoffs, _ = strconv.ParseFloat(ui.Hoffset, 64)  // для использования смещения с UI, если от осцилографа не работает
 	ui.plotData = UtoF(ui.linedata)
 	ui.Y = ui.plotData
 	ui.X = make([]float64, ndata)
 	for i := -ndata / 2; i < ndata/2; i++ {
 		ui.X[i+ndata/2] = (float64(i) * dt) + hoffs
 	}
-	//log.Printf("X0: %f", ui.X[0])
 	ui.xhoffs = hoffs
 	ui.xdt = dt
 	ui.connected = true
 	inx, offs_new, find := ui.findPeak()
 	if find {
 		ui.cursorPos[2] = float32(ui.X[inx])
-		//log.Printf("New Offset%s, new Peak:%f", fmt.Sprintf("%.0f", hoffs-offs_new-baseOffest[ui.timeB]), float32(ui.X[inx]))
 		if offs_new != 0 {
 			ui.Hoffset = fmt.Sprintf("%.0f", hoffs-offs_new-baseOffest[ui.timeB])
 			ui.SetOffset()
@@ -162,13 +157,11 @@ func (ui *AkipUI) findPeak() (int, float64, bool) {
 		if minx < 0 || maxx < 0 {
 			return 0, 0, false
 		}
-		//log.Printf("min:%d, max:%d, timeS:%f, timeE:%f", minx, maxx, ui.X[minx], ui.X[maxx])
 		maxy, maxy_index := -1.0, 1
 		for i := minx; i < maxx; i++ {
 			if ui.Y[i] > maxy {
 				maxy = ui.Y[i]
 				maxy_index = i
-				//log.Printf("Value: %f, Index: %d, Time: %f", x, i, ui.X[i])
 			}
 		}
 		offset := ui.X[len(ui.X)/2] - ui.X[maxy_index]
@@ -188,7 +181,7 @@ func (ui *AkipUI) findPeak() (int, float64, bool) {
 }
 
 func (ui *AkipUI) SendCMD(cmd string) error {
-	if _, err := ui.conn.Write([]byte(cmd)); err != nil { //+ "\r\n"
+	if _, err := ui.conn.Write([]byte(cmd)); err != nil { //+ "\r\n" - работает и без этого
 		return err
 	}
 	ui.lastResponse = string(cmd)
@@ -199,13 +192,9 @@ func (ui *AkipUI) SendCMD(cmd string) error {
 
 func (ui *AkipUI) binUnpuck(buf []byte, ch1 bool) ([]int8, float64, float64, int) {
 	size := binary.LittleEndian.Uint16(buf[0:2])
-	//log.Print("Размер осцилограммы: ")
-	//log.Println(size)
 	dataBuf := buf[12:size]
 	ch1_index := bytes.Index(dataBuf, []byte{0x43, 0x48, 0x31})
-	//log.Printf("CH1 Index: %d", ch1_index)
 	ch2_index := bytes.Index(dataBuf, []byte{0x43, 0x48, 0x32})
-	//log.Printf("CH2 Index: %d", ch2_index)
 	if ch1 {
 		return ui.chanelUnpuck(dataBuf, ch1_index)
 	} else {
@@ -216,15 +205,10 @@ func (ui *AkipUI) binUnpuck(buf []byte, ch1 bool) ([]int8, float64, float64, int
 
 func (ui *AkipUI) chanelUnpuck(buf []byte, index int) ([]int8, float64, float64, int) {
 	nData := int(binary.LittleEndian.Uint16(buf[index+15 : index+17]))
-	//log.Printf("NDATA: %d", nData)
 	hMove := binary.LittleEndian.Uint16(buf[index+31 : index+33])
-	//log.Printf("hMove: %d", hMove)
-	//dt := TimeScale[buf[index+27]-7]
-	//log.Printf("dT: %f", dt)
+	//dt := TimeScale[buf[index+27]-7]  // опасно - не все режимы описаны и может вылезать за пределы!!!
 	hoffs := float64(math.Float32frombits(binary.LittleEndian.Uint32(buf[index-12 : index+4-12])))
-	//log.Printf("buff: % X  HOffest: %f,", buf[index-12:index+4-12], hoffs)
 	shift := index + 59
-	//log.Printf("shift: %d", shift)
 	var wave = make([]int8, nData)
 	for i := 0; i < nData; i++ {
 		wave[i] = int8(binary.LittleEndian.Uint16(buf[shift:shift+2]) + hMove)
@@ -239,73 +223,4 @@ func UtoF(data []int8) []float64 {
 		result[i] = float64(v)
 	}
 	return result
-}
-
-// LOAD && SAVE
-func AppConfigPath(name string) (string, error) {
-	base, err := os.UserConfigDir()
-	if err != nil {
-		return "", err
-	}
-
-	dir := filepath.Join(base, "HardWorker")
-	err = os.MkdirAll(dir, 0755)
-	if err != nil {
-		return "", err
-	}
-
-	return filepath.Join(dir, name+".json"), nil
-}
-
-func LoadState(path string) (AkipState, error) {
-	var state AkipState
-
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return state, err
-	}
-	err = json.Unmarshal(data, &state)
-	return state, err
-}
-
-func SaveState(path string, state AkipState) error {
-	data, err := json.MarshalIndent(state, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(path, data, 0644)
-}
-
-func (ui *AkipUI) ExportState() AkipState {
-	return AkipState{
-		Adr:        ui.adr,
-		TimeB:      ui.timeB,
-		Auto:       ui.auto,
-		Hoffset:    ui.Hoffset,
-		Reper:      ui.reper,
-		Square:     ui.square,
-		Vspeed:     ui.vspeed,
-		Vtime:      ui.vtime,
-		Volume:     ui.volume,
-		MinY:       ui.minY,
-		MinMove:    ui.minMove,
-		CursorMode: ui.cursorMode,
-		CursorPos:  ui.cursorPos,
-	}
-}
-
-func (ui *AkipUI) ImportState(s AkipState) {
-	ui.adr = s.Adr
-	ui.timeB = s.TimeB
-	ui.auto = false //s.Auto
-	ui.Hoffset = s.Hoffset
-	ui.reper = s.Reper
-	ui.square = s.Square
-	ui.vspeed = s.Vspeed
-	ui.vtime = s.Vtime
-	ui.volume = s.Volume
-	ui.minY = s.MinY
-	ui.minMove = s.MinMove
-	ui.cursorMode = s.CursorMode
-	ui.cursorPos = s.CursorPos
 }
