@@ -99,7 +99,11 @@ func (ui *AkipUI) ReadWave() error {
 	packet = append(packet, payload...)
 	var dt, hoffs float64
 	var ndata int
-	ui.linedata, dt, hoffs, ndata = ui.binUnpuck(packet, true)
+	var err error
+	ui.linedata, dt, hoffs, ndata, err = ui.binUnpuck(packet, true)
+	if err != nil {
+		return err
+	}
 	ui.xsize = ndata - 1
 	//dt = dt * 15.2 / float64(ndata) * 1000000  // для пересчета dt полученного от осцилографа
 	ui.Atime = fmt.Sprintf("%.1f", dt)
@@ -132,6 +136,9 @@ func (ui *AkipUI) Calc() {
 	c0 := ui.cursorPos[0] / 2
 	c1 := ui.cursorPos[1] / 2
 	c2 := ui.cursorPos[2] / 2
+	if c1-c0 == 0 {
+		return
+	}
 	time := c2 - c0
 	repSize, _ := strconv.ParseFloat(ui.reper, 64)
 	rep := repSize / (float64(c1-c0) / 1000000)
@@ -190,7 +197,7 @@ func (ui *AkipUI) SendCMD(cmd string) error {
 	return nil
 }
 
-func (ui *AkipUI) binUnpuck(buf []byte, ch1 bool) ([]int8, float64, float64, int) {
+func (ui *AkipUI) binUnpuck(buf []byte, ch1 bool) ([]int8, float64, float64, int, error) {
 	size := binary.LittleEndian.Uint16(buf[0:2])
 	dataBuf := buf[12:size]
 	ch1_index := bytes.Index(dataBuf, []byte{0x43, 0x48, 0x31})
@@ -203,7 +210,10 @@ func (ui *AkipUI) binUnpuck(buf []byte, ch1 bool) ([]int8, float64, float64, int
 
 }
 
-func (ui *AkipUI) chanelUnpuck(buf []byte, index int) ([]int8, float64, float64, int) {
+func (ui *AkipUI) chanelUnpuck(buf []byte, index int) ([]int8, float64, float64, int, error) {
+	if index == -1 {
+		return nil, 0, 0, 0, fmt.Errorf("No Index")
+	}
 	nData := int(binary.LittleEndian.Uint16(buf[index+15 : index+17]))
 	hMove := binary.LittleEndian.Uint16(buf[index+31 : index+33])
 	//dt := TimeScale[buf[index+27]-7]  // опасно - не все режимы описаны и может вылезать за пределы!!!
@@ -211,10 +221,13 @@ func (ui *AkipUI) chanelUnpuck(buf []byte, index int) ([]int8, float64, float64,
 	shift := index + 59
 	var wave = make([]int8, nData)
 	for i := 0; i < nData; i++ {
+		if shift+2 > len(buf) {
+			return nil, 0, 0, 0, fmt.Errorf("Big buf shift")
+		}
 		wave[i] = int8(binary.LittleEndian.Uint16(buf[shift:shift+2]) + hMove)
 		shift += 2
 	}
-	return wave, 0, hoffs, nData
+	return wave, 0, hoffs, nData, nil
 }
 
 func UtoF(data []int8) []float64 {
