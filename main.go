@@ -11,6 +11,7 @@ import (
 	"github.com/pioruner/HardWorker.git/pkg/app"
 	"github.com/pioruner/HardWorker.git/pkg/tray"
 	"github.com/pioruner/HardWorker.git/pkg/ui"
+	"github.com/pioruner/HardWorker.git/pkg/visko"
 )
 
 //go:embed assets/icon.ico
@@ -27,11 +28,17 @@ var uim []giu.Widget
 
 // HardWare
 var akiper *akip.AkipUI
+var viskos *visko.AkipUI
 
 func Init() {
-	akiper = akip.Init("192.168.0.100:3000", "akip")
-	mod = append(mod, akiper)
-	uim = append(uim, akiper)
+	/*
+		akiper = akip.Init("192.168.0.100:3000", "akip")
+		mod = append(mod, akiper)
+		uim = append(uim, akiper)
+	*/
+	viskos = visko.Init("192.168.0.100:3000", "visko")
+	mod = append(mod, viskos)
+	uim = append(uim, viskos)
 }
 
 func main() {
