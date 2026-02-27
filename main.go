@@ -28,7 +28,7 @@ var uim []giu.Widget
 
 // HardWare
 var akiper *akip.AkipUI
-var viskos *visko.AkipUI
+var viskos *visko.NewModuleUI
 
 func Init() {
 	/*

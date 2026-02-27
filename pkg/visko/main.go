@@ -1,13 +1,15 @@
 package visko
 
 import (
+	"encoding/csv"
 	"encoding/json"
-	"log"
+	"fmt"
+	"math"
 	"net"
 	"os"
 	"path/filepath"
 
-	"github.com/pioruner/HardWorker.git/pkg/app"
+	"github.com/AllenDang/giu"
 )
 
 type AkipUI struct {
@@ -100,24 +102,6 @@ var baseOffest []float64 = []float64{
 	7.6 * 100,
 }
 
-func Init(adr string, name string) *AkipUI {
-	return &AkipUI{
-		adr:    adr,
-		id:     name,
-		cmdCh:  make(chan SCPICommand, 8),
-		X:      []float64{0, 1, 2, 3},
-		Y:      []float64{1, 1, 1, 1},
-		xsize:  3,
-		update: false,
-	}
-}
-
-func (ui *AkipUI) Run() {
-	app.Wg.Add(1)
-	go ui.connectionLoop()
-	log.Printf("Module Akip with name: %s --STARTED", ui.id)
-}
-
 // LOAD && SAVE
 
 func (ui *AkipUI) Save() {
@@ -202,4 +186,210 @@ func (ui *AkipUI) ImportState(s AkipState) {
 	ui.minMove = s.MinMove
 	ui.cursorMode = s.CursorMode
 	ui.cursorPos = s.CursorPos
+}
+
+// / NEW CODE !!!
+type TableRow struct {
+	T1   float64
+	T2   float64
+	U1   float64
+	U2   float64
+	Temp float64
+}
+
+type NewModuleUI struct {
+	rows []TableRow
+
+	// текущие (живые) параметры
+	curT1, curT2, curU1, curU2, curTemp string
+
+	// параметры по курсору
+	selT1, selT2, selU1, selU2, selTemp string
+
+	cursorIndex int32
+}
+
+/*
+	func Init(adr string, name string) *NewModuleUI {
+		return &NewModuleUI{}
+	}
+*/
+func Init(adr string, name string) *NewModuleUI {
+
+	ui := &NewModuleUI{}
+
+	baseTemp := 22.0
+
+	for i := 0; i < 20; i++ {
+
+		x := float64(i)
+
+		// Время (две близкие кривые)
+		t1 := 100 + 10*math.Sin(x*0.3)
+		t2 := 102 + 10*math.Sin(x*0.3+0.2)
+
+		// Напряжение (две близкие кривые)
+		u1 := 5 + 0.5*math.Sin(x*0.5)
+		u2 := 5.1 + 0.5*math.Sin(x*0.5+0.3)
+
+		// Температура растёт на 1 градус
+		temp := baseTemp + float64(i)
+
+		ui.rows = append(ui.rows, TableRow{
+			T1:   t1,
+			T2:   t2,
+			U1:   u1,
+			U2:   u2,
+			Temp: temp,
+		})
+	}
+
+	// Инициализируем курсор
+	ui.cursorIndex = int32(len(ui.rows) - 1)
+	ui.updateCursorValues()
+
+	// Текущие параметры = последняя точка
+	last := ui.rows[len(ui.rows)-1]
+	ui.curT1 = fmt.Sprintf("%.3f", last.T1)
+	ui.curT2 = fmt.Sprintf("%.3f", last.T2)
+	ui.curU1 = fmt.Sprintf("%.3f", last.U1)
+	ui.curU2 = fmt.Sprintf("%.3f", last.U2)
+	ui.curTemp = fmt.Sprintf("%.3f", last.Temp)
+
+	return ui
+}
+
+func (ui *NewModuleUI) Run() {
+	//app.Wg.Add(1)
+	//go ui.connectionLoop()
+	//log.Printf("Module Visko with name: %s --STARTED", ui.id)
+}
+
+// Save report
+func (ui *NewModuleUI) SaveCSV() {
+	file, err := os.Create("data.csv")
+	if err != nil {
+		return
+	}
+	defer file.Close()
+
+	w := csv.NewWriter(file)
+	defer w.Flush()
+
+	w.Write([]string{"T1", "T2", "U1", "U2", "Temp"})
+
+	for _, r := range ui.rows {
+		w.Write([]string{
+			fmt.Sprintf("%f", r.T1),
+			fmt.Sprintf("%f", r.T2),
+			fmt.Sprintf("%f", r.U1),
+			fmt.Sprintf("%f", r.U2),
+			fmt.Sprintf("%f", r.Temp),
+		})
+	}
+}
+
+func (ui *NewModuleUI) buildPlots() (timePlots, voltagePlots, tempPlots []giu.PlotWidget) {
+
+	var x []float64
+	var t1, t2, u1, u2, temp []float64
+
+	for i, r := range ui.rows {
+		x = append(x, float64(i))
+		t1 = append(t1, r.T1)
+		t2 = append(t2, r.T2)
+		u1 = append(u1, r.U1)
+		u2 = append(u2, r.U2)
+		temp = append(temp, r.Temp)
+	}
+
+	timePlots = []giu.PlotWidget{
+		giu.LineXY("T1", x, t1),
+		giu.LineXY("T2", x, t2),
+	}
+
+	voltagePlots = []giu.PlotWidget{
+		giu.LineXY("U1", x, u1),
+		giu.LineXY("U2", x, u2),
+	}
+
+	tempPlots = []giu.PlotWidget{
+		giu.LineXY("Temp", x, temp),
+	}
+
+	return
+}
+
+func (ui *NewModuleUI) buildTable() []*giu.TableRowWidget {
+
+	var rows []*giu.TableRowWidget
+
+	for _, r := range ui.rows {
+		row := giu.TableRow(
+			giu.Label(fmt.Sprintf("%.3f", r.T1)),
+			giu.Label(fmt.Sprintf("%.3f", r.T2)),
+			giu.Label(fmt.Sprintf("%.3f", r.U1)),
+			giu.Label(fmt.Sprintf("%.3f", r.U2)),
+			giu.Label(fmt.Sprintf("%.3f", r.Temp)),
+		)
+		rows = append(rows, row)
+	}
+
+	return rows
+}
+
+func (ui *NewModuleUI) updateCursorValues() {
+	if len(ui.rows) == 0 {
+		return
+	}
+
+	if ui.cursorIndex >= int32(len(ui.rows)) {
+		ui.cursorIndex = int32(len(ui.rows))
+	}
+	if ui.cursorIndex < 0 {
+		ui.cursorIndex = 0
+	}
+
+	r := ui.rows[ui.cursorIndex]
+
+	ui.selT1 = fmt.Sprintf("%.3f", r.T1)
+	ui.selT2 = fmt.Sprintf("%.3f", r.T2)
+	ui.selU1 = fmt.Sprintf("%.3f", r.U1)
+	ui.selU2 = fmt.Sprintf("%.3f", r.U2)
+	ui.selTemp = fmt.Sprintf("%.3f", r.Temp)
+}
+
+func drawCursorLine(index int, yMin, yMax float64, name string) giu.PlotWidget {
+	x := float64(index)
+	return giu.LineXY(
+		name,
+		[]float64{x, x},
+		[]float64{yMin, yMax},
+	)
+}
+
+func getMinMax(values []float64) (float64, float64) {
+	if len(values) == 0 {
+		return 0, 1
+	}
+
+	min := values[0]
+	max := values[0]
+
+	for _, v := range values {
+		if v < min {
+			min = v
+		}
+		if v > max {
+			max = v
+		}
+	}
+
+	// небольшой отступ сверху/снизу
+	padding := (max - min) * 0.1
+	if padding == 0 {
+		padding = 1
+	}
+
+	return min - padding, max + padding
 }

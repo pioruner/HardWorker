@@ -7,12 +7,6 @@ import (
 	"github.com/AllenDang/giu"
 )
 
-func (ui *AkipUI) Build() {
-	for _, w := range ui.UI() {
-		w.Build()
-	}
-}
-
 func drawCursor(name string, x float64, yMin, yMax float64) giu.PlotWidget {
 	return giu.LineXY(
 		name,
@@ -126,6 +120,137 @@ func (ui *AkipUI) UI() giu.Layout {
 					giu.RadioButton("", ui.auto).
 						OnChange(func() { ui.auto = !ui.auto })),
 			),
+		),
+	}
+}
+
+// NEW CODE !!!
+func (ui *NewModuleUI) Build() {
+	for _, w := range ui.UI() {
+		w.Build()
+	}
+}
+func (ui *NewModuleUI) UI() giu.Layout {
+
+	timePlots, voltagePlots, tempPlots := ui.buildPlots()
+	tableRows := ui.buildTable()
+
+	hasData := len(ui.rows) > 0
+
+	if hasData && ui.cursorIndex >= int32(len(ui.rows)) {
+		ui.cursorIndex = int32(len(ui.rows))
+	}
+
+	return giu.Layout{
+
+		giu.Row(
+
+			// ===================================================
+			// ================= ЛЕВАЯ ПАНЕЛЬ ====================
+			// ===================================================
+
+			giu.Child().
+				Size(420, -1).
+				Border(true).
+				Layout(
+
+					giu.Label("Оперативные параметры"),
+					giu.Separator(),
+
+					giu.Row(
+						giu.Label("T1"), giu.InputText(&ui.curT1).Flags(giu.InputTextFlagsReadOnly).Size(70),
+						giu.Label("T2"), giu.InputText(&ui.curT2).Flags(giu.InputTextFlagsReadOnly).Size(70),
+						giu.Label("U1"), giu.InputText(&ui.curU1).Flags(giu.InputTextFlagsReadOnly).Size(70),
+						giu.Label("U2"), giu.InputText(&ui.curU2).Flags(giu.InputTextFlagsReadOnly).Size(70),
+						giu.Label("Temp"), giu.InputText(&ui.curTemp).Flags(giu.InputTextFlagsReadOnly).Size(70),
+					),
+
+					giu.Separator(),
+
+					giu.Button("💾 Сохранить CSV").
+						Size(-1, 35).
+						OnClick(ui.SaveCSV),
+
+					giu.Button("🗑 Очистить").
+						Size(-1, 35).
+						OnClick(func() {
+							ui.rows = nil
+							ui.cursorIndex = 0
+						}),
+
+					giu.Separator(),
+
+					giu.Table().
+						Flags(giu.TableFlagsScrollY).
+						Size(-1, -1).
+						Columns(
+							giu.TableColumn("T1"),
+							giu.TableColumn("T2"),
+							giu.TableColumn("U1"),
+							giu.TableColumn("U2"),
+							giu.TableColumn("Temp"),
+						).
+						Rows(tableRows...),
+				),
+
+			// ===================================================
+			// ================= ПРАВАЯ ПАНЕЛЬ ===================
+			// ===================================================
+
+			giu.Custom(func() {
+
+				availX, availY := giu.GetAvailableRegion()
+
+				// резервируем место под слайдер и индикаторы
+				bottomBlock := float32(70)
+				plotHeight := int((availY-bottomBlock)/3) - 1
+
+				giu.Child().
+					Size(availX, availY).
+					Border(false).
+					Layout(
+
+						// ===== График времени =====
+						giu.Plot("##timePlot").
+							Size(-1, plotHeight).
+							Plots(append(timePlots,
+								drawCursorLine(int(ui.cursorIndex), -1000, 1000, "cursorT"),
+							)...),
+
+						// ===== График напряжения =====
+						giu.Plot("##voltagePlot").
+							Size(-1, plotHeight).
+							Plots(append(voltagePlots,
+								drawCursorLine(int(ui.cursorIndex), -1000, 1000, "cursorU"),
+							)...),
+
+						// ===== График температуры =====
+						giu.Plot("##tempPlot").
+							Size(-1, plotHeight).
+							Plots(append(tempPlots,
+								drawCursorLine(int(ui.cursorIndex), -1000, 1000, "cursorTemp"),
+							)...),
+
+						giu.Separator(),
+
+						// ===== Общий слайдер =====
+						giu.Style().SetDisabled(!hasData).To(
+							giu.SliderInt(&ui.cursorIndex, 0, int32(len(ui.rows)-1)).
+								Size(-1).
+								OnChange(ui.updateCursorValues),
+						),
+
+						// ===== Значения выбранной точки =====
+						giu.Row(
+							giu.Label("T1"), giu.InputText(&ui.selT1).Flags(giu.InputTextFlagsReadOnly).Size(70),
+							giu.Label("T2"), giu.InputText(&ui.selT2).Flags(giu.InputTextFlagsReadOnly).Size(70),
+							giu.Label("U1"), giu.InputText(&ui.selU1).Flags(giu.InputTextFlagsReadOnly).Size(70),
+							giu.Label("U2"), giu.InputText(&ui.selU2).Flags(giu.InputTextFlagsReadOnly).Size(70),
+							giu.Label("Temp"), giu.InputText(&ui.selTemp).Flags(giu.InputTextFlagsReadOnly).Size(70),
+						),
+					).
+					Build()
+			}),
 		),
 	}
 }
