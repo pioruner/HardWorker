@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/AllenDang/giu"
+	"github.com/sqweek/dialog"
 )
 
 type AkipUI struct {
@@ -207,6 +208,7 @@ type NewModuleUI struct {
 	selT1, selT2, selU1, selU2, selTemp string
 
 	cursorIndex int32
+	update      bool
 }
 
 /*
@@ -289,19 +291,43 @@ func (ui *NewModuleUI) SaveCSV() {
 	}
 }
 
-func (ui *NewModuleUI) buildPlots() (timePlots, voltagePlots, tempPlots []giu.PlotWidget) {
+func (ui *NewModuleUI) buildPlots() (
+	timePlots []giu.PlotWidget,
+	voltagePlots []giu.PlotWidget,
+	tempPlots []giu.PlotWidget,
+	xMin, xMax float64,
+	timeYMin, timeYMax float64,
+	voltYMin, voltYMax float64,
+	tempYMin, tempYMax float64,
+) {
 
-	var x []float64
-	var t1, t2, u1, u2, temp []float64
+	n := len(ui.rows)
+	if n == 0 {
+		return
+	}
+
+	x := make([]float64, n)
+	t1 := make([]float64, n)
+	t2 := make([]float64, n)
+	u1 := make([]float64, n)
+	u2 := make([]float64, n)
+	temp := make([]float64, n)
 
 	for i, r := range ui.rows {
-		x = append(x, float64(i))
-		t1 = append(t1, r.T1)
-		t2 = append(t2, r.T2)
-		u1 = append(u1, r.U1)
-		u2 = append(u2, r.U2)
-		temp = append(temp, r.Temp)
+		x[i] = float64(i)
+		t1[i] = r.T1
+		t2[i] = r.T2
+		u1[i] = r.U1
+		u2[i] = r.U2
+		temp[i] = r.Temp
 	}
+
+	xMin = 0
+	xMax = float64(n - 1)
+
+	timeYMin, timeYMax = getMinMax(append(t1, t2...))
+	voltYMin, voltYMax = getMinMax(append(u1, u2...))
+	tempYMin, tempYMax = getMinMax(temp)
 
 	timePlots = []giu.PlotWidget{
 		giu.LineXY("T1", x, t1),
@@ -392,4 +418,52 @@ func getMinMax(values []float64) (float64, float64) {
 	}
 
 	return min - padding, max + padding
+}
+
+func (ui *NewModuleUI) AddRow(t1, t2, u1, u2, temp float64) {
+
+	ui.rows = append(ui.rows, TableRow{
+		T1:   t1,
+		T2:   t2,
+		U1:   u1,
+		U2:   u2,
+		Temp: temp,
+	})
+}
+
+func (ui *NewModuleUI) setUpdate() {
+	ui.update = true
+}
+
+func (ui *NewModuleUI) SaveCSVDialog() {
+
+	path, err := dialog.File().
+		Filter("CSV file", "csv").
+		Title("Сохранить таблицу").
+		Save()
+
+	if err != nil {
+		return // пользователь отменил
+	}
+
+	file, err := os.Create(path)
+	if err != nil {
+		return
+	}
+	defer file.Close()
+
+	w := csv.NewWriter(file)
+	defer w.Flush()
+
+	_ = w.Write([]string{"T1", "T2", "U1", "U2", "Temp"})
+
+	for _, r := range ui.rows {
+		_ = w.Write([]string{
+			fmt.Sprintf("%.6f", r.T1),
+			fmt.Sprintf("%.6f", r.T2),
+			fmt.Sprintf("%.6f", r.U1),
+			fmt.Sprintf("%.6f", r.U2),
+			fmt.Sprintf("%.6f", r.Temp),
+		})
+	}
 }

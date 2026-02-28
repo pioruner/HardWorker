@@ -132,13 +132,22 @@ func (ui *NewModuleUI) Build() {
 }
 func (ui *NewModuleUI) UI() giu.Layout {
 
-	timePlots, voltagePlots, tempPlots := ui.buildPlots()
+	timePlots, voltagePlots, tempPlots,
+		xMin, xMax,
+		timeYMin, timeYMax,
+		voltYMin, voltYMax,
+		tempYMin, tempYMax := ui.buildPlots()
 	tableRows := ui.buildTable()
 
 	hasData := len(ui.rows) > 0
 
 	if hasData && ui.cursorIndex >= int32(len(ui.rows)) {
 		ui.cursorIndex = int32(len(ui.rows))
+	}
+
+	if ui.update {
+		giu.Update()
+		ui.update = false
 	}
 
 	return giu.Layout{
@@ -167,11 +176,11 @@ func (ui *NewModuleUI) UI() giu.Layout {
 
 					giu.Separator(),
 
-					giu.Button("💾 Сохранить CSV").
+					giu.Button("Сохранить CSV").
 						Size(-1, 35).
-						OnClick(ui.SaveCSV),
+						OnClick(ui.SaveCSVDialog),
 
-					giu.Button("🗑 Очистить").
+					giu.Button("Очистить").
 						Size(-1, 35).
 						OnClick(func() {
 							ui.rows = nil
@@ -213,6 +222,7 @@ func (ui *NewModuleUI) UI() giu.Layout {
 						// ===== График времени =====
 						giu.Plot("##timePlot").
 							Size(-1, plotHeight).
+							AxisLimits(xMin, xMax, timeYMin, timeYMax, giu.ConditionAlways).
 							Plots(append(timePlots,
 								drawCursorLine(int(ui.cursorIndex), -1000, 1000, "cursorT"),
 							)...),
@@ -220,6 +230,7 @@ func (ui *NewModuleUI) UI() giu.Layout {
 						// ===== График напряжения =====
 						giu.Plot("##voltagePlot").
 							Size(-1, plotHeight).
+							AxisLimits(xMin, xMax, voltYMin, voltYMax, giu.ConditionAlways).
 							Plots(append(voltagePlots,
 								drawCursorLine(int(ui.cursorIndex), -1000, 1000, "cursorU"),
 							)...),
@@ -227,6 +238,7 @@ func (ui *NewModuleUI) UI() giu.Layout {
 						// ===== График температуры =====
 						giu.Plot("##tempPlot").
 							Size(-1, plotHeight).
+							AxisLimits(xMin, xMax, tempYMin, tempYMax, giu.ConditionAlways).
 							Plots(append(tempPlots,
 								drawCursorLine(int(ui.cursorIndex), -1000, 1000, "cursorTemp"),
 							)...),
