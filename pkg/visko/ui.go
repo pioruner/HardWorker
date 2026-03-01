@@ -41,13 +41,15 @@ func (ui *ViskoUI) UI() giu.Layout {
 				Size(440, -1).
 				Border(true).
 				Layout(
+					giu.Align(giu.AlignCenter).To(
+						giu.Row(
 
-					giu.Row(
-						giu.Label("T1"), giu.InputText(&ui.curT1).Flags(giu.InputTextFlagsReadOnly).Size(50),
-						giu.Label("T2"), giu.InputText(&ui.curT2).Flags(giu.InputTextFlagsReadOnly).Size(50),
-						giu.Label("U1"), giu.InputText(&ui.curU1).Flags(giu.InputTextFlagsReadOnly).Size(50),
-						giu.Label("U2"), giu.InputText(&ui.curU2).Flags(giu.InputTextFlagsReadOnly).Size(50),
-						giu.Label("Temp"), giu.InputText(&ui.curTemp).Flags(giu.InputTextFlagsReadOnly).Size(50),
+							giu.Label("T1"), giu.InputText(&ui.curT1).Flags(giu.InputTextFlagsReadOnly).Size(50),
+							giu.Label("T2"), giu.InputText(&ui.curT2).Flags(giu.InputTextFlagsReadOnly).Size(50),
+							giu.Label("U1"), giu.InputText(&ui.curU1).Flags(giu.InputTextFlagsReadOnly).Size(50),
+							giu.Label("U2"), giu.InputText(&ui.curU2).Flags(giu.InputTextFlagsReadOnly).Size(50),
+							giu.Label("Temp"), giu.InputText(&ui.curTemp).Flags(giu.InputTextFlagsReadOnly).Size(50),
+						),
 					),
 
 					giu.Separator(),
@@ -93,7 +95,7 @@ func (ui *ViskoUI) UI() giu.Layout {
 
 				giu.Child().
 					Size(availX, availY).
-					Border(false).
+					Border(true).
 					Layout(
 
 						// ===== График времени =====
