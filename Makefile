@@ -1,16 +1,28 @@
-# Makefile
+# Makefile (Windows build with icon)
 
-# Указываем переменные
 GO=go
-MAIN=main.go
+APP=HardWorker
+ICON=assets/icon.ico
 
-# Цели
-.PHONY: run build
+.PHONY: run build clean
 
-# Команда для запуска приложения
 run:
-	$(GO) run $(MAIN)
+	$(GO) run .
 
-# Команда для сборки приложения
 build:
-	$(GO) build -ldflags "-s -w -H=windowsgui -extldflags=-static" .
+	@echo Creating resource file...
+	echo id ICON "$(ICON)" > $(APP).rc
+	echo GLFW_ICON ICON "$(ICON)" >> $(APP).rc
+
+	@echo Compiling resource...
+	windres $(APP).rc -O coff -o $(APP).syso
+
+	@echo Building executable...
+	$(GO) build -ldflags "-s -w -H=windowsgui" -o $(APP).exe .
+
+	@echo Cleaning temp files...
+	del $(APP).rc
+	del $(APP).syso
+
+clean:
+	del $(APP).exe

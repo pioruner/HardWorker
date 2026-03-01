@@ -32,13 +32,11 @@ var viskos *visko.ViskoUI
 
 func Init() {
 
-	akiper = akip.Init("192.168.0.100:3000", "akip")
+	akiper = akip.Init("192.168.0.100:3000", "Сепаратор Ультразвуковой")
 	mod = append(mod, akiper)
-	uim = append(uim, akiper)
 
-	viskos = visko.Init("192.168.0.100:502", "visko")
+	viskos = visko.Init("192.168.0.100:502", "Вискозиметр Магнитный")
 	mod = append(mod, viskos)
-	uim = append(uim, viskos)
 }
 
 func main() {
@@ -53,7 +51,7 @@ func main() {
 	for { //Main Cycle
 		switch <-app.Event {
 		case app.EventToggleGUI:
-			ui.GUI(iconApp, fontI, uim...)
+			ui.GUI(iconApp, fontI, mod...)
 		case app.EventQuit:
 			app.Cancel()
 			app.Wg.Wait()
@@ -62,10 +60,3 @@ func main() {
 		time.Sleep(time.Millisecond * 100)
 	}
 }
-
-//////// TODO //////////
-/*
-- Отследить ошибки - чтоб не падало
-- Добавить иконку к ехе файлу
-- Курсоры могут быть вне зоны поиска!
-*/

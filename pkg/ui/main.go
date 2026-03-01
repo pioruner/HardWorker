@@ -15,12 +15,19 @@ func close() bool {
 	return true
 }
 
-func GUI(iconApp []byte, fontI []byte, w ...giu.Widget) {
+func GUI(iconApp []byte, fontI []byte, modules ...app.Modules) {
+
+	if len(modules) == 0 {
+		return
+	}
+
 	app.State.Gui = true
-	window := giu.NewMasterWindow(app.AppName, 1000, 450, 0) // Create main window. giu.MasterWindowFlagsMaximized
-	img, _, err := image.Decode(bytes.NewReader(iconApp))    //Decode icon
+
+	window := giu.NewMasterWindow(app.AppName, 1000, 450, giu.MasterWindowFlagsMaximized)
+
+	img, _, err := image.Decode(bytes.NewReader(iconApp))
 	if err == nil {
-		window.SetIcon(img) //Set icon
+		window.SetIcon(img)
 	}
 
 	window.SetCloseCallback(close)
@@ -29,28 +36,64 @@ func GUI(iconApp []byte, fontI []byte, w ...giu.Widget) {
 	style := giu.Style()
 	style.SetFont(font)
 	window.SetStyle(style)
-	menu := 0
-	window.Run(func() {
-		select {
-		case <-app.CloseGUI: //Hide to tray
-			window.SetShouldClose(true) //Drop UI
-			return
 
+	menu := 0
+	_, FPy := giu.GetFramePadding()
+
+	window.Run(func() {
+
+		select {
+		case <-app.CloseGUI:
+			window.SetShouldClose(true)
+			return
 		default:
-			giu.SingleWindow().Layout( //Main UI
-				giu.Row(
-					giu.Child().Size(220, -1).Border(true).Flags(giu.WindowFlags(giu.AlignCenter)).Layout(
-						giu.Align(giu.AlignCenter).To(
-							giu.Label("MENU"),
-							giu.Button("Akip").Size(200, 35).OnClick(func() { menu = 0 }),
-							giu.Button("Visko").Size(200, 35).OnClick(func() { menu = 1 }),
-						),
-					),
-					giu.Child().Size(-1, -1).Border(true).Layout(
-						w[menu]),
-				),
+		}
+
+		if menu >= len(modules) {
+			menu = 0
+		}
+
+		// ---------- Формируем меню ----------
+		menuLayout := giu.Layout{}
+
+		for i, m := range modules {
+
+			index := i
+
+			menuLayout = append(menuLayout,
+				giu.Selectable(m.Name()).
+					Selected(menu == index).
+					Size(240, (14+(FPy*2)+2)).
+					OnClick(func() {
+						menu = index
+					}),
 			)
 		}
+
+		// ---------- Основной layout ----------
+		giu.SingleWindow().Layout(
+
+			giu.Row(
+
+				// ===== ЛЕВАЯ ПАНЕЛЬ =====
+				giu.Child().
+					Size(240, -1).
+					Border(true).
+					Layout(
+						giu.Align(giu.AlignCenter).To(giu.Label("МОДУЛИ")),
+						giu.Separator(),
+						giu.Align(giu.AlignCenter).To(menuLayout...)),
+
+				// ===== ПРАВАЯ ПАНЕЛЬ =====
+				giu.Child().
+					Size(-1, -1).
+					Border(true).
+					Layout(
+						modules[menu],
+					),
+			),
+		)
 	})
+
 	app.State.Gui = false
 }

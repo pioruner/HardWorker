@@ -118,6 +118,10 @@ func (ui *AkipUI) Run() {
 	log.Printf("Module Akip with name: %s --STARTED", ui.id)
 }
 
+func (ui *AkipUI) Name() string {
+	return ui.id
+}
+
 // LOAD && SAVE
 
 func (ui *AkipUI) Save() {

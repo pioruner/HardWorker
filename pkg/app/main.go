@@ -7,10 +7,14 @@ import (
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/AllenDang/giu"
 )
 
 type Modules interface {
+	giu.Widget
 	Run()
+	Name() string
 }
 
 func Run(mod ...Modules) {

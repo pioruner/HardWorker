@@ -97,6 +97,10 @@ func (ui *ViskoUI) Run() {
 	log.Printf("Module Visko with name: %s --STARTED", ui.id)
 }
 
+func (ui *ViskoUI) Name() string {
+	return ui.id
+}
+
 func (ui *ViskoUI) buildPlots() (
 	timePlots []giu.PlotWidget,
 	voltagePlots []giu.PlotWidget,
