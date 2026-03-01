@@ -1,50 +1,48 @@
 package visko
 
 import (
-	"encoding/binary"
-	"fmt"
-	"io"
 	"log"
-	"net"
 	"time"
 
 	"github.com/pioruner/HardWorker.git/pkg/app"
+	"github.com/simonvetter/modbus"
 )
 
-func (ui *AkipUI) connectionLoop() {
-	ui.Load()
+func (ui *ViskoUI) connectionLoop() {
 	defer app.Wg.Done()
 	defer log.Printf("Module Visko with name: %s --STOPED", ui.id)
-	defer ui.Save()
 	retry := time.Second
+	conn, err := modbus.NewClient(&modbus.ClientConfiguration{
+		URL:     "tcp://" + ui.adr,
+		Timeout: 1 * time.Second,
+	})
+	if err != nil {
+		return
+	}
 	for {
 		select {
 		case <-app.Ctx.Done():
 			return
 		default:
-			conn, err := net.DialTimeout("tcp", ui.adr, time.Second)
+			err = conn.Open()
 			if err != nil {
-				ui.lastResponse = err.Error()
 				time.Sleep(retry)
 				continue
 			}
 			ui.conn = conn
-
-			ui.lastResponse = "Connected"
 			err = ui.sessionLoop()
-			conn.Close()
+			err = conn.Close()
 			ui.conn = nil
 			ui.connected = false
 			time.Sleep(retry)
-			ui.lastResponse = "Disconnected"
 			ui.setUpdate()
 		}
 
 	}
 }
 
-func (ui *AkipUI) sessionLoop() error {
-	ticker := time.NewTicker(200 * time.Millisecond)
+func (ui *ViskoUI) sessionLoop() error {
+	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 
 	for {
@@ -53,57 +51,27 @@ func (ui *AkipUI) sessionLoop() error {
 			return nil
 
 		case <-ticker.C:
-			if err := ui.ReadWave(); err != nil {
+			if err := ui.Read(); err != nil {
 				return err // <-- триггер reconnect
 			}
 		}
 	}
 }
 
-func (ui *AkipUI) setUpdate() {
-	ui.update = true
-}
-
-func (ui *AkipUI) ReadWave() error {
-	if _, err := ui.conn.Write([]byte("STARTBIN")); err != nil {
-		ui.lastResponse = "Ошибка Write: " + err.Error()
+func (ui *ViskoUI) Read() error {
+	reg16, err := ui.conn.ReadRegister(100, modbus.HOLDING_REGISTER)
+	if err != nil {
 		return err
+	} else {
+		log.Printf("value: %v", reg16)        // as unsigned integer
+		log.Printf("value: %v", int16(reg16)) // as signed integer
 	}
-	header := make([]byte, 12)
-	_ = ui.conn.SetReadDeadline(time.Now().Add(time.Millisecond * 1000))
-	if _, err := io.ReadFull(ui.conn, header); err != nil {
-		ui.lastResponse = "Ошибка Read Header: " + err.Error()
-		ui.setUpdate()
-		return err
-	}
-	size := binary.LittleEndian.Uint16(header[0:2])
-	payload := make([]byte, size)
-	if _, err := io.ReadFull(ui.conn, payload); err != nil {
-		ui.lastResponse = "Ошибка Read Payload: " + err.Error()
-		ui.setUpdate()
-		return err
-	}
-	packet := make([]byte, 0, 12+len(payload))
-	packet = append(packet, header...)
-	packet = append(packet, payload...)
-	var dt, hoffs float64
-	var ndata int
 
-	ui.xsize = ndata - 1
-	//dt = dt * 15.2 / float64(ndata) * 1000000  // для пересчета dt полученного от осцилографа
-	ui.Atime = fmt.Sprintf("%.1f", dt)
-	ui.Aoffset = fmt.Sprintf("%.1f", hoffs)
-	dt = TimeScale[ui.timeB] * 15.2 / float64(ndata) * 1000000
-	//hoffs, _ = strconv.ParseFloat(ui.Hoffset, 64)  // для использования смещения с UI, если от осцилографа не работает
+	//reg16s, err := ui.conn.ReadRegisters(100, 4, modbus.INPUT_REGISTER)
 
-	ui.Y = ui.plotData
-	ui.X = make([]float64, ndata)
-	for i := -ndata / 2; i < ndata/2; i++ {
-		ui.X[i+ndata/2] = (float64(i) * dt) + hoffs
-	}
-	ui.xhoffs = hoffs
-	ui.xdt = dt
-	ui.connected = true
+	//client.SetEncoding(modbus.LITTLE_ENDIAN, modbus.LOW_WORD_FIRST)
+
+	//fl32s, err  := client.ReadFloat32s(100, 2, modbus.INPUT_REGISTER)
 
 	ui.setUpdate()
 	return nil

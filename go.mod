@@ -5,7 +5,10 @@ go 1.25.6
 require (
 	github.com/AllenDang/giu v0.14.1
 	github.com/getlantern/systray v1.2.2
+	github.com/simonvetter/modbus v1.6.4
 )
+
+require github.com/goburrow/serial v0.1.0 // indirect
 
 require (
 	github.com/AllenDang/cimgui-go v1.3.2-0.20250409185506-6b2ff1aa26b5 // indirect
@@ -25,7 +28,7 @@ require (
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c // indirect
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
 	github.com/sahilm/fuzzy v0.1.1 // indirect
-	github.com/sqweek/dialog v0.0.0-20260123140253-64c163d53aac // indirect
+	github.com/sqweek/dialog v0.0.0-20260123140253-64c163d53aac
 	golang.design/x/hotkey v0.4.1 // indirect
 	golang.design/x/mainthread v0.3.0 // indirect
 	golang.org/x/image v0.27.0 // indirect
