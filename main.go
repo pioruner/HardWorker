@@ -36,7 +36,7 @@ func Init() {
 		mod = append(mod, akiper)
 		uim = append(uim, akiper)
 	*/
-	viskos = visko.Init("192.168.0.100:3000", "visko")
+	viskos = visko.Init("192.168.0.100:502", "visko")
 	mod = append(mod, viskos)
 	uim = append(uim, viskos)
 }
