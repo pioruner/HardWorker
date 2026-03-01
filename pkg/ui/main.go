@@ -29,6 +29,7 @@ func GUI(iconApp []byte, fontI []byte, w ...giu.Widget) {
 	style := giu.Style()
 	style.SetFont(font)
 	window.SetStyle(style)
+	menu := 0
 	window.Run(func() {
 		select {
 		case <-app.CloseGUI: //Hide to tray
@@ -37,7 +38,17 @@ func GUI(iconApp []byte, fontI []byte, w ...giu.Widget) {
 
 		default:
 			giu.SingleWindow().Layout( //Main UI
-				w...,
+				giu.Row(
+					giu.Child().Size(220, -1).Border(true).Flags(giu.WindowFlags(giu.AlignCenter)).Layout(
+						giu.Align(giu.AlignCenter).To(
+							giu.Label("MENU"),
+							giu.Button("Akip").Size(200, 35).OnClick(func() { menu = 0 }),
+							giu.Button("Visko").Size(200, 35).OnClick(func() { menu = 1 }),
+						),
+					),
+					giu.Child().Size(-1, -1).Border(true).Layout(
+						w[menu]),
+				),
 			)
 		}
 	})

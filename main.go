@@ -31,11 +31,11 @@ var akiper *akip.AkipUI
 var viskos *visko.ViskoUI
 
 func Init() {
-	/*
-		akiper = akip.Init("192.168.0.100:3000", "akip")
-		mod = append(mod, akiper)
-		uim = append(uim, akiper)
-	*/
+
+	akiper = akip.Init("192.168.0.100:3000", "akip")
+	mod = append(mod, akiper)
+	uim = append(uim, akiper)
+
 	viskos = visko.Init("192.168.0.100:502", "visko")
 	mod = append(mod, viskos)
 	uim = append(uim, viskos)
