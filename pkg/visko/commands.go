@@ -1,6 +1,7 @@
 package visko
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -59,20 +60,51 @@ func (ui *ViskoUI) sessionLoop() error {
 }
 
 func (ui *ViskoUI) Read() error {
-	reg16, err := ui.conn.ReadRegister(100, modbus.HOLDING_REGISTER)
+	ui.conn.SetEncoding(modbus.BIG_ENDIAN, modbus.LOW_WORD_FIRST)
+
+	t1, err := ui.conn.ReadRegister(16384, modbus.HOLDING_REGISTER)
 	if err != nil {
 		return err
-	} else {
-		log.Printf("value: %v", reg16)        // as unsigned integer
-		log.Printf("value: %v", int16(reg16)) // as signed integer
+	}
+	t2, err := ui.conn.ReadRegister(16385, modbus.HOLDING_REGISTER)
+	if err != nil {
+		return err
+	}
+	temp, err := ui.conn.ReadFloat32(16386, modbus.HOLDING_REGISTER)
+	if err != nil {
+		return err
+	}
+	u1, err := ui.conn.ReadFloat32(16388, modbus.HOLDING_REGISTER)
+	if err != nil {
+		return err
+	}
+	u2, err := ui.conn.ReadFloat32(16390, modbus.HOLDING_REGISTER)
+	if err != nil {
+		return err
+	}
+	cmd, err := ui.conn.ReadRegister(16392, modbus.HOLDING_REGISTER)
+	if err != nil {
+		return err
 	}
 
+	ui.curT1 = fmt.Sprintf("%d", t1)
+	ui.curT2 = fmt.Sprintf("%d", t2)
+	ui.curU1 = fmt.Sprintf("%.2f", u1)
+	ui.curU2 = fmt.Sprintf("%.2f", u2)
+	ui.curTemp = fmt.Sprintf("%.1f", temp)
+
+	if ui.cmd == 0 && cmd > 0 {
+
+		ui.AddRow(float64(t1), float64(t2), float64(u1), float64(u2), float64(temp))
+	}
+	ui.cmd = cmd
+	ui.connected = true
+	ui.setUpdate()
 	//reg16s, err := ui.conn.ReadRegisters(100, 4, modbus.INPUT_REGISTER)
 
 	//client.SetEncoding(modbus.LITTLE_ENDIAN, modbus.LOW_WORD_FIRST)
 
 	//fl32s, err  := client.ReadFloat32s(100, 2, modbus.INPUT_REGISTER)
 
-	ui.setUpdate()
 	return nil
 }

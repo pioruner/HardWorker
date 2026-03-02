@@ -31,8 +31,8 @@ var akiper *akip.AkipUI
 var viskos *visko.ViskoUI
 
 func Init() {
-	mod = append(mod, akip.Init("192.168.0.100:3000", "Сепаратор Ультразвуковой"))
-	mod = append(mod, visko.Init("192.168.0.100:502", "Вискозиметр Магнитный"))
+	//mod = append(mod, akip.Init("192.168.0.100:3000", "Сепаратор Ультразвуковой"))
+	mod = append(mod, visko.Init("192.168.0.200:502", "Вискозиметр Магнитный"))
 }
 
 func main() {

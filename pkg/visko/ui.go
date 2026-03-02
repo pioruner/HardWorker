@@ -91,7 +91,7 @@ func (ui *ViskoUI) UI() giu.Layout {
 
 				// резервируем место под слайдер и индикаторы
 				bottomBlock := float32(70)
-				plotHeight := int((availY-bottomBlock)/3) - 1
+				plotHeight := int((availY-bottomBlock)/3) - 5
 
 				giu.Child().
 					Size(availX, availY).
@@ -103,7 +103,7 @@ func (ui *ViskoUI) UI() giu.Layout {
 							Size(-1, plotHeight).
 							AxisLimits(xMin, xMax, timeYMin, timeYMax, giu.ConditionAlways).
 							Plots(append(timePlots,
-								drawCursorLine(int(ui.cursorIndex), -1000, 1000, "cursorT"),
+								drawCursorLine(int(ui.cursorIndex), timeYMin, timeYMax, "cursorT"),
 							)...),
 
 						// ===== График напряжения =====
@@ -111,7 +111,7 @@ func (ui *ViskoUI) UI() giu.Layout {
 							Size(-1, plotHeight).
 							AxisLimits(xMin, xMax, voltYMin, voltYMax, giu.ConditionAlways).
 							Plots(append(voltagePlots,
-								drawCursorLine(int(ui.cursorIndex), -1000, 1000, "cursorU"),
+								drawCursorLine(int(ui.cursorIndex), voltYMin, voltYMax, "cursorU"),
 							)...),
 
 						// ===== График температуры =====
@@ -119,7 +119,7 @@ func (ui *ViskoUI) UI() giu.Layout {
 							Size(-1, plotHeight).
 							AxisLimits(xMin, xMax, tempYMin, tempYMax, giu.ConditionAlways).
 							Plots(append(tempPlots,
-								drawCursorLine(int(ui.cursorIndex), -1000, 1000, "cursorTemp"),
+								drawCursorLine(int(ui.cursorIndex), tempYMin, tempYMax, "cursorTemp"),
 							)...),
 
 						giu.Separator(),

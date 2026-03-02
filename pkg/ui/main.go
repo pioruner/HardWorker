@@ -63,7 +63,7 @@ func GUI(iconApp []byte, fontI []byte, modules ...app.Modules) {
 			menuLayout = append(menuLayout,
 				giu.Selectable(m.Name()).
 					Selected(menu == index).
-					Size(240, (14+(FPy*2)+2)).
+					Size(220, (14+(FPy*2)+2)).
 					OnClick(func() {
 						menu = index
 					}),
@@ -82,6 +82,7 @@ func GUI(iconApp []byte, fontI []byte, modules ...app.Modules) {
 					Layout(
 						giu.Align(giu.AlignCenter).To(giu.Label("МОДУЛИ")),
 						giu.Separator(),
+						giu.Dummy(220, 5),
 						giu.Align(giu.AlignCenter).To(menuLayout...)),
 
 				// ===== ПРАВАЯ ПАНЕЛЬ =====

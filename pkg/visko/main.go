@@ -4,7 +4,6 @@ import (
 	"encoding/csv"
 	"fmt"
 	"log"
-	"math"
 	"os"
 
 	"github.com/AllenDang/giu"
@@ -36,61 +35,65 @@ type ViskoUI struct {
 	adr         string
 	conn        *modbus.ModbusClient
 	connected   bool
+	cmd         uint16
 }
 
-/*
-	func Init(adr string, name string) *ViskoUI {
-		return &ViskoUI{}
-	}
-*/
 func Init(adr string, name string) *ViskoUI {
-
-	ui := &ViskoUI{
+	return &ViskoUI{
 		id:  name,
 		adr: adr,
 	}
-
-	baseTemp := 22.0
-
-	for i := 0; i < 20; i++ {
-
-		x := float64(i)
-
-		// Время (две близкие кривые)
-		t1 := 100 + 10*math.Sin(x*0.3)
-		t2 := 102 + 10*math.Sin(x*0.3+0.2)
-
-		// Напряжение (две близкие кривые)
-		u1 := 5 + 0.5*math.Sin(x*0.5)
-		u2 := 5.1 + 0.5*math.Sin(x*0.5+0.3)
-
-		// Температура растёт на 1 градус
-		temp := baseTemp + float64(i)
-
-		ui.rows = append(ui.rows, TableRow{
-			T1:   t1,
-			T2:   t2,
-			U1:   u1,
-			U2:   u2,
-			Temp: temp,
-		})
-	}
-
-	// Инициализируем курсор
-	ui.cursorIndex = int32(len(ui.rows) - 1)
-	ui.updateCursorValues()
-
-	// Текущие параметры = последняя точка
-	last := ui.rows[len(ui.rows)-1]
-	ui.curT1 = fmt.Sprintf("%.1f", last.T1)
-	ui.curT2 = fmt.Sprintf("%.1f", last.T2)
-	ui.curU1 = fmt.Sprintf("%.2f", last.U1)
-	ui.curU2 = fmt.Sprintf("%.2f", last.U2)
-	ui.curTemp = fmt.Sprintf("%.1f", last.Temp)
-
-	return ui
 }
 
+/*
+func Init(adr string, name string) *ViskoUI {
+
+		ui := &ViskoUI{
+			id:  name,
+			adr: adr,
+		}
+
+		baseTemp := 22.0
+
+		for i := 0; i < 20; i++ {
+
+			x := float64(i)
+
+			// Время (две близкие кривые)
+			t1 := 100 + 10*math.Sin(x*0.3)
+			t2 := 102 + 10*math.Sin(x*0.3+0.2)
+
+			// Напряжение (две близкие кривые)
+			u1 := 5 + 0.5*math.Sin(x*0.5)
+			u2 := 5.1 + 0.5*math.Sin(x*0.5+0.3)
+
+			// Температура растёт на 1 градус
+			temp := baseTemp + float64(i)
+
+			ui.rows = append(ui.rows, TableRow{
+				T1:   t1,
+				T2:   t2,
+				U1:   u1,
+				U2:   u2,
+				Temp: temp,
+			})
+		}
+
+		// Инициализируем курсор
+		ui.cursorIndex = int32(len(ui.rows) - 1)
+		ui.updateCursorValues()
+
+		// Текущие параметры = последняя точка
+		last := ui.rows[len(ui.rows)-1]
+		ui.curT1 = fmt.Sprintf("%.1f", last.T1)
+		ui.curT2 = fmt.Sprintf("%.1f", last.T2)
+		ui.curU1 = fmt.Sprintf("%.2f", last.U1)
+		ui.curU2 = fmt.Sprintf("%.2f", last.U2)
+		ui.curTemp = fmt.Sprintf("%.1f", last.Temp)
+
+		return ui
+	}
+*/
 func (ui *ViskoUI) Run() {
 	app.Wg.Add(1)
 	go ui.connectionLoop()
@@ -255,7 +258,7 @@ func (ui *ViskoUI) SaveCSVDialog() {
 	if err != nil {
 		return // пользователь отменил
 	}
-
+	path = path + ".csv"
 	file, err := os.Create(path)
 	if err != nil {
 		return
@@ -269,11 +272,11 @@ func (ui *ViskoUI) SaveCSVDialog() {
 
 	for _, r := range ui.rows {
 		_ = w.Write([]string{
-			fmt.Sprintf("%.6f", r.T1),
-			fmt.Sprintf("%.6f", r.T2),
-			fmt.Sprintf("%.6f", r.U1),
-			fmt.Sprintf("%.6f", r.U2),
-			fmt.Sprintf("%.6f", r.Temp),
+			fmt.Sprintf("%.0f", r.T1),
+			fmt.Sprintf("%.0f", r.T2),
+			fmt.Sprintf("%.3f", r.U1),
+			fmt.Sprintf("%.3f", r.U2),
+			fmt.Sprintf("%.2f", r.Temp),
 		})
 	}
 }
