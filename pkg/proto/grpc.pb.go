@@ -23,7 +23,6 @@ const (
 
 type AkipRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Level         float32                `protobuf:"fixed32,1,opt,name=level,proto3" json:"level,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -56,13 +55,6 @@ func (x *AkipRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use AkipRequest.ProtoReflect.Descriptor instead.
 func (*AkipRequest) Descriptor() ([]byte, []int) {
 	return file_grpc_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *AkipRequest) GetLevel() float32 {
-	if x != nil {
-		return x.Level
-	}
-	return 0
 }
 
 type AkipResponse struct {
@@ -114,9 +106,8 @@ var File_grpc_proto protoreflect.FileDescriptor
 const file_grpc_proto_rawDesc = "" +
 	"\n" +
 	"\n" +
-	"grpc.proto\x12\vgrpcservice\"#\n" +
-	"\vAkipRequest\x12\x14\n" +
-	"\x05level\x18\x01 \x01(\x02R\x05level\"$\n" +
+	"grpc.proto\x12\vgrpcservice\"\r\n" +
+	"\vAkipRequest\"$\n" +
 	"\fAkipResponse\x12\x14\n" +
 	"\x05level\x18\x01 \x01(\x02R\x05level2C\n" +
 	"\x04Akip\x12;\n" +

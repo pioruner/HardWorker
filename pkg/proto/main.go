@@ -15,8 +15,7 @@ type myAkipServer struct {
 }
 
 func (s *myAkipServer) Data(ctx context.Context, req *AkipRequest) (*AkipResponse, error) {
-	log.Printf("Received akip %f", req.Level)
-	return &AkipResponse{Level: 0.00}, nil
+	return &AkipResponse{Level: -1.00}, nil
 }
 
 func Grpc() {

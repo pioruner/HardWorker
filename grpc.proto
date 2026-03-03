@@ -10,7 +10,7 @@ service Akip {
 }
 
 message AkipRequest {
-  float level = 1;
+
 }
 
 message AkipResponse {

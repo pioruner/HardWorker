@@ -40,6 +40,7 @@ func main() {
 		os.Exit(0)
 	}
 	runtime.LockOSThread()
+	//go proto.Grpc()
 	Init()
 	app.Run(mod...)
 	tray.Tray(iconTray) //Create tray icon
