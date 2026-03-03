@@ -21,8 +21,8 @@ build:
 	$(GO) build -ldflags "-s -w -H=windowsgui" -o $(APP).exe .
 
 	@echo Cleaning temp files...
-	del $(APP).rc
-	del $(APP).syso
+	rm -f $(APP).rc
+	rm -f $(APP).syso
 
 clean:
-	del $(APP).exe
+	rm -f $(APP).exe
