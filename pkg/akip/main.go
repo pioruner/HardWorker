@@ -38,6 +38,7 @@ type AkipUI struct {
 
 	update         bool
 	Atime, Aoffset string
+	gport          string
 }
 
 type CursorMode int32
@@ -100,7 +101,7 @@ var baseOffest []float64 = []float64{
 	7.6 * 100,
 }
 
-func Init(adr string, name string) *AkipUI {
+func Init(adr string, name string, gRPCport string) *AkipUI {
 	return &AkipUI{
 		adr:    adr,
 		id:     name,
@@ -109,12 +110,14 @@ func Init(adr string, name string) *AkipUI {
 		Y:      []float64{1, 1, 1, 1},
 		xsize:  3,
 		update: false,
+		gport:  gRPCport,
 	}
 }
 
 func (ui *AkipUI) Run() {
 	app.Wg.Add(1)
 	go ui.connectionLoop()
+	go ui.gRPC()
 	log.Printf("Module Akip with name: %s --STARTED", ui.id)
 }
 
