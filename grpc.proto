@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package grpcservice;
+
+// указываем go_package: имя модуля из go.mod + ; + имя пакета
+option go_package = "github.com/pioruner/HardWorker.git/pkg/proto;proto";
+
+service Akip {
+  rpc Data (AkipRequest) returns (AkipResponse);
+}
+
+message AkipRequest {
+  float level = 1;
+}
+
+message AkipResponse {
+  float level = 1;
+}

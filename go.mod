@@ -6,9 +6,16 @@ require (
 	github.com/AllenDang/giu v0.14.1
 	github.com/getlantern/systray v1.2.2
 	github.com/simonvetter/modbus v1.6.4
+	google.golang.org/grpc v1.79.1
+	google.golang.org/protobuf v1.36.11
 )
 
-require github.com/goburrow/serial v0.1.0 // indirect
+require (
+	github.com/goburrow/serial v0.1.0 // indirect
+	golang.org/x/net v0.48.0 // indirect
+	golang.org/x/text v0.32.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
+)
 
 require (
 	github.com/AllenDang/cimgui-go v1.3.2-0.20250409185506-6b2ff1aa26b5 // indirect
@@ -32,6 +39,6 @@ require (
 	golang.design/x/hotkey v0.4.1 // indirect
 	golang.design/x/mainthread v0.3.0 // indirect
 	golang.org/x/image v0.27.0 // indirect
-	golang.org/x/sys v0.25.0 // indirect
+	golang.org/x/sys v0.39.0 // indirect
 	gopkg.in/eapache/queue.v1 v1.1.0 // indirect
 )
