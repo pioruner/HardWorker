@@ -76,6 +76,7 @@ func (ui *AkipUI) setUpdate() {
 }
 
 func (ui *AkipUI) ReadWave() error {
+	_ = ui.conn.SetWriteDeadline(time.Now().Add(time.Millisecond * 1000))
 	if _, err := ui.conn.Write([]byte("STARTBIN")); err != nil {
 		ui.lastResponse = "Ошибка Write: " + err.Error()
 		return err
@@ -88,6 +89,9 @@ func (ui *AkipUI) ReadWave() error {
 		return err
 	}
 	size := binary.LittleEndian.Uint16(header[0:2])
+	if size == 0 || size > 65535 {
+		return fmt.Errorf("invalid payload size: %d", size)
+	}
 	payload := make([]byte, size)
 	if _, err := io.ReadFull(ui.conn, payload); err != nil {
 		ui.lastResponse = "Ошибка Read Payload: " + err.Error()
@@ -188,6 +192,7 @@ func (ui *AkipUI) findPeak() (int, float64, bool) {
 }
 
 func (ui *AkipUI) SendCMD(cmd string) error {
+	_ = ui.conn.SetWriteDeadline(time.Now().Add(time.Millisecond * 1000))
 	if _, err := ui.conn.Write([]byte(cmd)); err != nil { //+ "\r\n" - работает и без этого
 		return err
 	}
