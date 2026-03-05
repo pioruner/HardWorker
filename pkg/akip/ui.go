@@ -85,6 +85,11 @@ func (ui *AkipUI) UI() giu.Layout {
 					giu.Dummy(25, -1),
 					giu.Label("Объём фазы"),
 					giu.InputText(&ui.volume).Label("см^3").Size(75).Flags(giu.InputTextFlagsReadOnly),
+					giu.Align(giu.AlignRight).To(
+						giu.Row(
+							giu.Button("Регистрация").Size(100, -1).OnClick(func() { ui.regist = !ui.regist }),
+							giu.RadioButton("", ui.regist)),
+					),
 				)),
 			giu.Separator(),
 			giu.InputText(&ui.lastResponse).Size(giu.Auto).Flags(giu.InputTextFlagsReadOnly).Hint("Последний ответ прибора..."), //Response for CMD

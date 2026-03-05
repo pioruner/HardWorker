@@ -34,7 +34,7 @@ func (ak *AkipUI) gRPC() {
 		log.Println("gRPC server stopped")
 	}()
 
-	log.Printf("gRPC server is running on :%d", ak.gport)
+	log.Printf("gRPC server is running on :%s", ak.gport)
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}

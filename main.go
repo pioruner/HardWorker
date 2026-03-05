@@ -6,9 +6,10 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/AllenDang/giu"
 	"github.com/pioruner/HardWorker.git/pkg/akip"
 	"github.com/pioruner/HardWorker.git/pkg/app"
+	"github.com/pioruner/HardWorker.git/pkg/loger"
+	"github.com/pioruner/HardWorker.git/pkg/setts"
 	"github.com/pioruner/HardWorker.git/pkg/tray"
 	"github.com/pioruner/HardWorker.git/pkg/ui"
 	"github.com/pioruner/HardWorker.git/pkg/visko"
@@ -24,15 +25,19 @@ var iconApp []byte
 var fontI []byte
 
 var mod []app.Modules
-var uim []giu.Widget
 
-// HardWare
+// Modules
 var akiper *akip.AkipUI
 var viskos *visko.ViskoUI
+var set *setts.SettsUI
+var logs *loger.LogUI
 
 func Init() {
 	mod = append(mod, akip.Init("192.168.0.100:3000", "Сепаратор Ультразвуковой", ":50051"))
-	mod = append(mod, visko.Init("192.168.0.200:502", "Вискозиметр Магнитный"))
+	// mod = append(mod, visko.Init("192.168.0.200:502", "Вискозиметр Магнитный"))
+	//set=setts.Init()
+	mod = append(mod, set)
+	mod = append(mod, logs)
 }
 
 func main() {
