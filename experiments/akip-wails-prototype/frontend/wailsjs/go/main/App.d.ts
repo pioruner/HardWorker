@@ -5,3 +5,5 @@ import {main} from '../models';
 export function ApplyControls(arg1:main.AkipControls):Promise<main.AkipSnapshot>;
 
 export function GetSnapshot():Promise<main.AkipSnapshot>;
+
+export function SetRegistration(arg1:boolean):Promise<main.AkipSnapshot>;

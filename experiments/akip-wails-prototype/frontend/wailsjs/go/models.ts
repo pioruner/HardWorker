@@ -48,6 +48,7 @@ export namespace main {
 	    vSpeed: string;
 	    vTime: string;
 	    volume: string;
+	    registration: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new AkipSnapshot(source);
@@ -72,6 +73,7 @@ export namespace main {
 	        this.vSpeed = source["vSpeed"];
 	        this.vTime = source["vTime"];
 	        this.volume = source["volume"];
+	        this.registration = source["registration"];
 	    }
 	}
 

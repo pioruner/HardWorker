@@ -9,3 +9,7 @@ export function ApplyControls(arg1) {
 export function GetSnapshot() {
   return window['go']['main']['App']['GetSnapshot']();
 }
+
+export function SetRegistration(arg1) {
+  return window['go']['main']['App']['SetRegistration'](arg1);
+}

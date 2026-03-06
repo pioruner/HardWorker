@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -62,6 +63,7 @@ type AkipSnapshot struct {
 	VSpeed       string     `json:"vSpeed"`
 	VTime        string     `json:"vTime"`
 	Volume       string     `json:"volume"`
+	Registration bool       `json:"registration"`
 }
 
 type AkipService struct {
@@ -87,22 +89,26 @@ type AkipService struct {
 	vSpeed       string
 	vTime        string
 	volume       string
+	registration bool
 
 	conn  net.Conn
 	cmdCh chan string
+
+	regFile   *os.File
+	regWriter *csv.Writer
 }
 
 func NewAkipService(id string) *AkipService {
 	s := &AkipService{
 		id:         id,
-		address:    "192.168.0.10:5024",
+		address:    "192.168.0.100:3000",
 		timeBase:   3,
 		hOffset:    "0",
 		reper:      "25",
 		square:     "10",
 		minY:       "20",
 		minMove:    "0.3",
-		autoSearch: true,
+		autoSearch: false,
 		cursorMode: "start",
 		cursorPos:  [3]float64{18, 34, 62},
 		x:          []float64{0, 1, 2, 3},
@@ -122,6 +128,7 @@ func (s *AkipService) Start(ctx context.Context) {
 }
 
 func (s *AkipService) Shutdown() {
+	s.StopRegistration()
 	s.saveState()
 	s.mu.Lock()
 	if s.conn != nil {
@@ -194,7 +201,63 @@ func (s *AkipService) GetSnapshot() AkipSnapshot {
 		VSpeed:       s.vSpeed,
 		VTime:        s.vTime,
 		Volume:       s.volume,
+		Registration: s.registration,
 	}
+}
+
+func (s *AkipService) StartRegistration(path string) error {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return fmt.Errorf("empty path")
+	}
+	if !strings.HasSuffix(strings.ToLower(path), ".csv") {
+		path += ".csv"
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	_ = s.stopRegistrationLocked()
+
+	fileExists := false
+	if _, err := os.Stat(path); err == nil {
+		fileExists = true
+	}
+
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		return err
+	}
+	w := csv.NewWriter(f)
+	if !fileExists {
+		_ = w.Write([]string{"Date-Time", "Volume ml"})
+		w.Flush()
+	}
+
+	s.regFile = f
+	s.regWriter = w
+	s.registration = true
+	return nil
+}
+
+func (s *AkipService) StopRegistration() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	_ = s.stopRegistrationLocked()
+}
+
+func (s *AkipService) stopRegistrationLocked() error {
+	if s.regWriter != nil {
+		s.regWriter.Flush()
+		s.regWriter = nil
+	}
+	var err error
+	if s.regFile != nil {
+		err = s.regFile.Close()
+		s.regFile = nil
+	}
+	s.registration = false
+	return err
 }
 
 func (s *AkipService) connectionLoop(ctx context.Context) {
@@ -245,7 +308,9 @@ func (s *AkipService) connectionLoop(ctx context.Context) {
 
 func (s *AkipService) sessionLoop(ctx context.Context, conn net.Conn) error {
 	ticker := time.NewTicker(200 * time.Millisecond)
+	regTicker := time.NewTicker(time.Second)
 	defer ticker.Stop()
+	defer regTicker.Stop()
 
 	for {
 		select {
@@ -259,8 +324,23 @@ func (s *AkipService) sessionLoop(ctx context.Context, conn net.Conn) error {
 			if err := s.sendCommand(conn, cmd); err != nil {
 				return err
 			}
+		case <-regTicker.C:
+			s.writeRegistrationRow()
 		}
 	}
+}
+
+func (s *AkipService) writeRegistrationRow() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.registration || s.regWriter == nil {
+		return
+	}
+	_ = s.regWriter.Write([]string{
+		time.Now().Format(time.DateTime),
+		s.volume,
+	})
+	s.regWriter.Flush()
 }
 
 func (s *AkipService) setDisconnected(msg string) {
@@ -551,7 +631,7 @@ func (s *AkipService) loadState() {
 
 	s.address = strings.TrimSpace(state.Address)
 	if s.address == "" {
-		s.address = "192.168.0.10:5024"
+		s.address = "192.168.0.100:3000"
 	}
 	s.timeBase = clampTimeBase(state.TimeBase)
 	s.hOffset = state.HOffset
@@ -559,7 +639,7 @@ func (s *AkipService) loadState() {
 	s.square = state.Square
 	s.minY = state.MinY
 	s.minMove = state.MinMove
-	s.autoSearch = state.AutoSearch
+	s.autoSearch = false
 	if state.CursorMode == "start" || state.CursorMode == "reper" || state.CursorMode == "front" {
 		s.cursorMode = state.CursorMode
 	}

@@ -18,11 +18,13 @@ func main() {
 
 	// Create application with options
 	err := wails.Run(&options.App{
-		Title:     "akip-wails-prototype",
-		Width:     1280,
-		Height:    820,
-		MinWidth:  1180,
-		MinHeight: 760,
+		Title:            "akip-wails-prototype",
+		Frameless:        false,
+		Width:            1760,
+		Height:           980,
+		MinWidth:         1180,
+		MinHeight:        760,
+		WindowStartState: options.Maximised,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},

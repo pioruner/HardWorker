@@ -20,6 +20,7 @@ export type AkipSnapshot = {
   vSpeed: string;
   vTime: string;
   volume: string;
+  registration: boolean;
 };
 
 export type AkipControls = {
@@ -44,14 +45,15 @@ type AkipState = {
 export const defaultSnapshot: AkipSnapshot = {
   connected: false,
   lastResponse: "Ожидание подключения к прибору...",
-  address: "192.168.0.10:5024",
+  address: "192.168.0.100:3000",
   timeBase: 3,
   hOffset: "0",
   reper: "25",
   square: "10",
   minY: "20",
   minMove: "0.3",
-  autoSearch: true,
+  autoSearch: false,
+  registration: false,
   cursorMode: "start",
   cursorPos: [18, 34, 62],
   x: [0, 1, 2, 3],

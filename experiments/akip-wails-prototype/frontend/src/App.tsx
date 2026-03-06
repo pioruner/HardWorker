@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import ReactECharts from "echarts-for-react";
 import "./App.scss";
-import { ApplyControls, GetSnapshot } from "../wailsjs/go/main/App";
+import { ApplyControls, GetSnapshot, SetRegistration } from "../wailsjs/go/main/App";
 import { defaultSnapshot, toControls, useAkipStore, type AkipSnapshot, type CursorMode } from "./store/akipStore";
 
 const timeScaleValues = ["1us", "2us", "5us", "10us", "20us", "50us", "100us"];
@@ -61,6 +61,15 @@ function App() {
   const patchAndApply = (next: Partial<AkipSnapshot>) => {
     patchControls(next);
     void applyCurrentControls();
+  };
+
+  const toggleRegistration = async () => {
+    try {
+      const next = asSnapshot(await SetRegistration(!snapshot.registration));
+      setSnapshot(next);
+    } catch {
+      // ignore cancel/dialog errors
+    }
   };
 
   const activeCursorIndex = cursorIndexByMode[snapshot.cursorMode];
@@ -191,7 +200,13 @@ function App() {
           <span>Объём фазы</span>
           <strong>{snapshot.volume} см³</strong>
         </div>
-        <input className="response-box" readOnly value={snapshot.lastResponse} />
+        <button className={`toggle ${snapshot.registration ? "is-active" : ""}`} onClick={toggleRegistration}>
+          {snapshot.registration ? "Регистрация: вкл" : "Регистрация: выкл"}
+        </button>
+        <div className="response-row">
+          <span>Последний ответ прибора</span>
+          <input className="response-box" readOnly value={snapshot.lastResponse} title={snapshot.lastResponse} />
+        </div>
       </section>
 
       <section className="panel panel-chart">
