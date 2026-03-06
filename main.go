@@ -2,6 +2,8 @@ package main
 
 import (
 	_ "embed"
+	"io"
+	"log"
 	"os"
 	"runtime"
 	"time"
@@ -34,17 +36,22 @@ var logs *loger.LogUI
 
 func Init() {
 	mod = append(mod, akip.Init("192.168.0.100:3000", "Сепаратор Ультразвуковой", ":50051"))
-	// mod = append(mod, visko.Init("192.168.0.200:502", "Вискозиметр Магнитный"))
+	//mod = append(mod, visko.Init("192.168.0.200:502", "Вискозиметр Магнитный"))
 	//set=setts.Init()
-	mod = append(mod, set)
-	mod = append(mod, logs)
+	//mod = append(mod, set)
+	//mod = append(mod, logs)
 }
 
 func main() {
+
 	if app.CheckInstatse() {
 		os.Exit(0)
 	}
 	runtime.LockOSThread()
+	logUI := loger.New()
+
+	log.SetOutput(io.MultiWriter(os.Stdout, &loger.UiWriter{Ui: logUI}))
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 	Init()
 	app.Run(mod...)
 	tray.Tray(iconTray) //Create tray icon
