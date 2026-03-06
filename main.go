@@ -2,13 +2,16 @@ package main
 
 import (
 	_ "embed"
+	"io"
+	"log"
 	"os"
 	"runtime"
 	"time"
 
-	"github.com/AllenDang/giu"
 	"github.com/pioruner/HardWorker.git/pkg/akip"
 	"github.com/pioruner/HardWorker.git/pkg/app"
+	"github.com/pioruner/HardWorker.git/pkg/loger"
+	"github.com/pioruner/HardWorker.git/pkg/setts"
 	"github.com/pioruner/HardWorker.git/pkg/tray"
 	"github.com/pioruner/HardWorker.git/pkg/ui"
 	"github.com/pioruner/HardWorker.git/pkg/visko"
@@ -24,22 +27,39 @@ var iconApp []byte
 var fontI []byte
 
 var mod []app.Modules
-var uim []giu.Widget
 
-// HardWare
+// Modules
 var akiper *akip.AkipUI
 var viskos *visko.ViskoUI
+var set *setts.SettsUI
+var logs *loger.LogUI
 
 func Init() {
-	mod = append(mod, akip.Init("192.168.0.100:3000", "Сепаратор Ультразвуковой"))
-	mod = append(mod, visko.Init("192.168.0.200:502", "Вискозиметр Магнитный"))
+	cfg := setts.LoadOrDefault()
+
+	akiper = akip.Init(cfg.AKIPAddress, "Сепаратор Ультразвуковой", cfg.GRPCPort)
+	mod = append(mod, akiper)
+	//mod = append(mod, visko.Init("192.168.0.200:502", "Вискозиметр Магнитный"))
+	set = setts.Init(func(s setts.SettsState) {
+		if akiper != nil {
+			akiper.SetAddress(s.AKIPAddress)
+		}
+	})
+	mod = append(mod, set)
+
+	logs = loger.New()
+	log.SetOutput(io.MultiWriter(os.Stdout, &loger.UiWriter{Ui: logs}))
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+	mod = append(mod, logs)
 }
 
 func main() {
+
 	if app.CheckInstatse() {
 		os.Exit(0)
 	}
 	runtime.LockOSThread()
+
 	Init()
 	app.Run(mod...)
 	tray.Tray(iconTray) //Create tray icon

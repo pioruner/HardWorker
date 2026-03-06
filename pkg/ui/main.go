@@ -67,25 +67,23 @@ func GUI(iconApp []byte, fontI []byte, modules ...app.Modules) {
 					OnClick(func() {
 						menu = index
 					}),
+				giu.Dummy(10, (14+(FPy*2)+2)),
 			)
 		}
 
 		// ---------- Основной layout ----------
 		giu.SingleWindow().Layout(
 
-			giu.Row(
+			giu.Column(
 
-				// ===== ЛЕВАЯ ПАНЕЛЬ =====
+				// ===== Меню =====
 				giu.Child().
-					Size(240, -1).
+					Size(-1, (14+(FPy*2)+20)).
 					Border(true).
 					Layout(
-						giu.Align(giu.AlignCenter).To(giu.Label("МОДУЛИ")),
-						giu.Separator(),
-						giu.Dummy(220, 5),
-						giu.Align(giu.AlignCenter).To(menuLayout...)),
+						giu.Align(giu.AlignLeft).To(giu.Row(menuLayout...))),
 
-				// ===== ПРАВАЯ ПАНЕЛЬ =====
+				// ===== Основная программа =====
 				giu.Child().
 					Size(-1, -1).
 					Border(true).

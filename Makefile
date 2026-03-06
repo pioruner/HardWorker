@@ -4,7 +4,7 @@ GO=go
 APP=HardWorker
 ICON=assets/icon.ico
 
-.PHONY: run build clean
+.PHONY: run build clean proto
 
 run:
 	$(GO) run .
@@ -26,3 +26,6 @@ build:
 
 clean:
 	rm -f $(APP).exe
+
+proto:
+	protoc --go_out=./pkg/proto --go_opt=paths=source_relative --go-grpc_out=./pkg/proto --go-grpc_opt=paths=source_relative grpc.proto

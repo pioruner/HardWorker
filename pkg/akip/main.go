@@ -1,13 +1,17 @@
 package akip
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"log"
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/pioruner/HardWorker.git/pkg/app"
+	"github.com/sqweek/dialog"
 )
 
 type AkipUI struct {
@@ -38,6 +42,9 @@ type AkipUI struct {
 
 	update         bool
 	Atime, Aoffset string
+	gport          string
+	regist         bool
+	reg_path       string
 }
 
 type CursorMode int32
@@ -100,7 +107,7 @@ var baseOffest []float64 = []float64{
 	7.6 * 100,
 }
 
-func Init(adr string, name string) *AkipUI {
+func Init(adr string, name string, gRPCport string) *AkipUI {
 	return &AkipUI{
 		adr:    adr,
 		id:     name,
@@ -109,17 +116,35 @@ func Init(adr string, name string) *AkipUI {
 		Y:      []float64{1, 1, 1, 1},
 		xsize:  3,
 		update: false,
+		gport:  gRPCport,
+		regist: false,
 	}
 }
 
 func (ui *AkipUI) Run() {
 	app.Wg.Add(1)
 	go ui.connectionLoop()
+	go ui.gRPC()
+	go ui.registrationLoop()
 	log.Printf("Module Akip with name: %s --STARTED", ui.id)
 }
 
 func (ui *AkipUI) Name() string {
 	return ui.id
+}
+
+func (ui *AkipUI) SetAddress(adr string) {
+	adr = strings.TrimSpace(adr)
+	if adr == "" || adr == ui.adr {
+		return
+	}
+
+	ui.adr = adr
+	ui.lastResponse = "Адрес обновлён из настроек: " + adr
+	if ui.conn != nil {
+		_ = ui.conn.Close()
+	}
+	ui.setUpdate()
 }
 
 // LOAD && SAVE
@@ -193,7 +218,11 @@ func (ui *AkipUI) ExportState() AkipState {
 }
 
 func (ui *AkipUI) ImportState(s AkipState) {
-	ui.adr = s.Adr
+	// Адрес приходит из общего модуля настроек, поэтому не перетираем его
+	// локальным состоянием Akip, если он уже задан.
+	if ui.adr == "" && s.Adr != "" {
+		ui.adr = s.Adr
+	}
 	ui.timeB = s.TimeB
 	ui.auto = false //s.Auto
 	ui.Hoffset = s.Hoffset
@@ -206,4 +235,115 @@ func (ui *AkipUI) ImportState(s AkipState) {
 	ui.minMove = s.MinMove
 	ui.cursorMode = s.CursorMode
 	ui.cursorPos = s.CursorPos
+}
+
+func (ui *AkipUI) registrationLoop() {
+
+	type regState int
+
+	const (
+		stateIdle regState = iota
+		stateRecording
+	)
+
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
+	state := stateIdle
+
+	var file *os.File
+	var writer *csv.Writer
+
+	for {
+		select {
+
+		case <-app.Ctx.Done():
+
+			// корректное завершение
+			if state == stateRecording {
+				writer.Flush()
+				file.Close()
+			}
+			return
+
+		case <-ticker.C:
+
+			switch state {
+
+			// =======================
+			// IDLE
+			// =======================
+			case stateIdle:
+
+				if ui.regist {
+
+					path, err := dialog.File().
+						Filter("CSV file", "csv").
+						Title("Файл регистрации").
+						Save()
+
+					if err != nil {
+						ui.regist = false
+						break
+					}
+
+					if !strings.HasSuffix(path, ".csv") {
+						path += ".csv"
+					}
+
+					// проверяем существует ли файл
+					fileExists := false
+					if _, err := os.Stat(path); err == nil {
+						fileExists = true
+					}
+
+					f, err := os.OpenFile(
+						path,
+						os.O_CREATE|os.O_WRONLY|os.O_APPEND,
+						0644,
+					)
+					if err != nil {
+						ui.regist = false
+						break
+					}
+
+					file = f
+					writer = csv.NewWriter(file)
+
+					// если файл новый — пишем заголовок
+					if !fileExists {
+						_ = writer.Write([]string{"Date-Time", "Volume ml"})
+						writer.Flush()
+					}
+
+					state = stateRecording
+				}
+
+			// =======================
+			// RECORDING
+			// =======================
+			case stateRecording:
+
+				if !ui.regist {
+
+					writer.Flush()
+					file.Close()
+
+					writer = nil
+					file = nil
+
+					state = stateIdle
+					break
+				}
+
+				// запись строки
+				_ = writer.Write([]string{
+					time.Now().Format(time.DateTime),
+					ui.volume,
+				})
+
+				writer.Flush()
+			}
+		}
+	}
 }
