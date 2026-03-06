@@ -11,6 +11,7 @@ import (
 	"github.com/pioruner/HardWorker.git/pkg/akip"
 	"github.com/pioruner/HardWorker.git/pkg/app"
 	"github.com/pioruner/HardWorker.git/pkg/loger"
+	"github.com/pioruner/HardWorker.git/pkg/logger"
 	"github.com/pioruner/HardWorker.git/pkg/setts"
 	"github.com/pioruner/HardWorker.git/pkg/tray"
 	"github.com/pioruner/HardWorker.git/pkg/ui"
@@ -51,26 +52,32 @@ func Init() {
 	log.SetOutput(io.MultiWriter(os.Stdout, &loger.UiWriter{Ui: logs}))
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 	mod = append(mod, logs)
+	logger.Infof("Modules initialized: %d", len(mod))
 }
 
 func main() {
 
 	if app.CheckInstatse() {
+		logger.Warnf("Application is already running, exiting")
 		os.Exit(0)
 	}
 	runtime.LockOSThread()
-
+	logger.Infof("Main thread locked")
 	Init()
 	app.Run(mod...)
+	logger.Infof("All modules started")
 	tray.Tray(iconTray) //Create tray icon
 	app.Event <- app.EventToggleGUI
 	for { //Main Cycle
 		switch <-app.Event {
 		case app.EventToggleGUI:
+			logger.Infof("Event: toggle GUI")
 			ui.GUI(iconApp, fontI, mod...)
 		case app.EventQuit:
+			logger.Warnf("Event: quit requested")
 			app.Cancel()
 			app.Wg.Wait()
+			logger.Infof("Graceful shutdown complete")
 			os.Exit(0)
 		}
 		time.Sleep(time.Millisecond * 100)

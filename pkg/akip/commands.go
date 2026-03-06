@@ -5,36 +5,46 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"log"
 	"math"
 	"net"
 	"strconv"
 	"time"
 
 	"github.com/pioruner/HardWorker.git/pkg/app"
+	"github.com/pioruner/HardWorker.git/pkg/logger"
 )
 
 func (ui *AkipUI) connectionLoop() {
 	ui.Load()
 	defer app.Wg.Done()
-	defer log.Printf("Module Akip with name: %s --STOPED", ui.id)
+	defer logger.Infof("Module Akip stopped: %s", ui.id)
 	defer ui.Save()
 	retry := time.Second
 	for {
 		select {
 		case <-app.Ctx.Done():
+			logger.Infof("Akip connection loop cancelled: %s", ui.id)
 			return
 		default:
+			logger.Infof("Akip connecting to %s (%s)", ui.adr, ui.id)
 			conn, err := net.DialTimeout("tcp", ui.adr, time.Second)
 			if err != nil {
 				ui.lastResponse = err.Error()
+				logger.Warnf("Akip connection failed (%s): %v", ui.adr, err)
 				time.Sleep(retry)
 				continue
 			}
 			ui.conn = conn
 
 			ui.lastResponse = "Connected"
+			ui.connected = true
+			logger.Infof("Akip connected: %s", ui.adr)
 			err = ui.sessionLoop()
+			if err != nil {
+				logger.Warnf("Akip session closed with error (%s): %v", ui.adr, err)
+			} else {
+				logger.Infof("Akip session closed: %s", ui.adr)
+			}
 			conn.Close()
 			ui.conn = nil
 			ui.connected = false
@@ -79,6 +89,7 @@ func (ui *AkipUI) ReadWave() error {
 	_ = ui.conn.SetWriteDeadline(time.Now().Add(time.Millisecond * 1000))
 	if _, err := ui.conn.Write([]byte("STARTBIN")); err != nil {
 		ui.lastResponse = "Ошибка Write: " + err.Error()
+		logger.Errorf("Akip write STARTBIN failed (%s): %v", ui.adr, err)
 		return err
 	}
 	header := make([]byte, 12)
@@ -86,16 +97,19 @@ func (ui *AkipUI) ReadWave() error {
 	if _, err := io.ReadFull(ui.conn, header); err != nil {
 		ui.lastResponse = "Ошибка Read Header: " + err.Error()
 		ui.setUpdate()
+		logger.Errorf("Akip read header failed (%s): %v", ui.adr, err)
 		return err
 	}
 	size := binary.LittleEndian.Uint16(header[0:2])
 	if size == 0 || size > 65535 {
+		logger.Errorf("Akip invalid payload size (%s): %d", ui.adr, size)
 		return fmt.Errorf("invalid payload size: %d", size)
 	}
 	payload := make([]byte, size)
 	if _, err := io.ReadFull(ui.conn, payload); err != nil {
 		ui.lastResponse = "Ошибка Read Payload: " + err.Error()
 		ui.setUpdate()
+		logger.Errorf("Akip read payload failed (%s): %v", ui.adr, err)
 		return err
 	}
 	packet := make([]byte, 0, 12+len(payload))
@@ -106,6 +120,7 @@ func (ui *AkipUI) ReadWave() error {
 	var err error
 	ui.linedata, dt, hoffs, ndata, err = ui.binUnpuck(packet, true)
 	if err != nil {
+		logger.Errorf("Akip binary unpack failed (%s): %v", ui.adr, err)
 		return err
 	}
 	ui.xsize = ndata - 1
@@ -194,6 +209,7 @@ func (ui *AkipUI) findPeak() (int, float64, bool) {
 func (ui *AkipUI) SendCMD(cmd string) error {
 	_ = ui.conn.SetWriteDeadline(time.Now().Add(time.Millisecond * 1000))
 	if _, err := ui.conn.Write([]byte(cmd)); err != nil { //+ "\r\n" - работает и без этого
+		logger.Errorf("Akip command send failed (%s, cmd=%q): %v", ui.adr, cmd, err)
 		return err
 	}
 	ui.lastResponse = string(cmd)

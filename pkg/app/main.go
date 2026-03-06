@@ -2,13 +2,13 @@ package app
 
 import (
 	"context"
-	"log"
 	"net"
 	"runtime"
 	"sync"
 	"time"
 
 	"github.com/AllenDang/giu"
+	"github.com/pioruner/HardWorker.git/pkg/logger"
 )
 
 type Modules interface {
@@ -80,8 +80,10 @@ func CheckInstatse() bool {
 	conn, err := net.DialTimeout("tcp", tcpHost, time.Millisecond*100)
 	if err == nil {
 		conn.Close()
+		logger.Warnf("Detected existing application instance on %s", tcpHost)
 		return true
 	}
+	logger.Infof("No active instance found, starting local listener on %s", tcpHost)
 	go startTCPListener()
 	return false
 }
@@ -89,16 +91,19 @@ func CheckInstatse() bool {
 func startTCPListener() {
 	l, err := net.Listen("tcp", tcpHost)
 	if err != nil {
-		log.Println("Cannot start TCP listener:", err)
+		logger.Errorf("Cannot start TCP listener on %s: %v", tcpHost, err)
 		return
 	}
+	logger.Infof("TCP listener started on %s", tcpHost)
 	defer l.Close()
 
 	for {
 		_, err := l.Accept()
 		if err != nil {
+			logger.Warnf("TCP listener accept failed: %v", err)
 			continue
 		}
+		logger.Infof("Received activation signal from another instance")
 		if State.Gui {
 			Event <- EventToggleGUI
 		}

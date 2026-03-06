@@ -3,11 +3,11 @@ package visko
 import (
 	"encoding/csv"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/AllenDang/giu"
 	"github.com/pioruner/HardWorker.git/pkg/app"
+	"github.com/pioruner/HardWorker.git/pkg/logger"
 	"github.com/simonvetter/modbus"
 	"github.com/sqweek/dialog"
 )
@@ -97,7 +97,7 @@ func Init(adr string, name string) *ViskoUI {
 func (ui *ViskoUI) Run() {
 	app.Wg.Add(1)
 	go ui.connectionLoop()
-	log.Printf("Module Visko with name: %s --STARTED", ui.id)
+	logger.Infof("Module Visko started: %s", ui.id)
 }
 
 func (ui *ViskoUI) Name() string {
@@ -256,11 +256,13 @@ func (ui *ViskoUI) SaveCSVDialog() {
 		Save()
 
 	if err != nil {
+		logger.Infof("CSV save dialog cancelled: %s", ui.id)
 		return // пользователь отменил
 	}
 	path = path + ".csv"
 	file, err := os.Create(path)
 	if err != nil {
+		logger.Errorf("CSV file create failed (%s): %v", path, err)
 		return
 	}
 	defer file.Close()
@@ -268,15 +270,22 @@ func (ui *ViskoUI) SaveCSVDialog() {
 	w := csv.NewWriter(file)
 	defer w.Flush()
 
-	_ = w.Write([]string{"T1", "T2", "U1", "U2", "Temp"})
+	if err := w.Write([]string{"T1", "T2", "U1", "U2", "Temp"}); err != nil {
+		logger.Errorf("CSV header write failed (%s): %v", path, err)
+		return
+	}
 
 	for _, r := range ui.rows {
-		_ = w.Write([]string{
+		if err := w.Write([]string{
 			fmt.Sprintf("%.0f", r.T1),
 			fmt.Sprintf("%.0f", r.T2),
 			fmt.Sprintf("%.3f", r.U1),
 			fmt.Sprintf("%.3f", r.U2),
 			fmt.Sprintf("%.2f", r.Temp),
-		})
+		}); err != nil {
+			logger.Errorf("CSV row write failed (%s): %v", path, err)
+			return
+		}
 	}
+	logger.Infof("CSV saved: %s (%d rows)", path, len(ui.rows))
 }

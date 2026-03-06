@@ -3,6 +3,7 @@ package tray
 import (
 	"github.com/getlantern/systray"
 	"github.com/pioruner/HardWorker.git/pkg/app"
+	"github.com/pioruner/HardWorker.git/pkg/logger"
 )
 
 // Состояние приложения
@@ -16,6 +17,7 @@ var TD *TrayData
 
 func Tray(icon []byte) {
 	if app.MacOS {
+		logger.Infof("Tray disabled on macOS mode")
 		return
 	}
 	TD = &TrayData{
@@ -23,6 +25,7 @@ func Tray(icon []byte) {
 	}
 
 	go systray.Run(TD.onReady, TD.onExit)
+	logger.Infof("Tray event loop started")
 }
 
 func (a *TrayData) onReady() {
@@ -40,12 +43,14 @@ func (a *TrayData) onReady() {
 		for {
 			select {
 			case <-TD.mToggle.ClickedCh:
+				logger.Infof("Tray toggle clicked")
 				if app.State.Gui {
 					app.CloseGUI <- struct{}{}
 				} else {
 					app.Event <- app.EventToggleGUI
 				}
 			case <-TD.mQuit.ClickedCh:
+				logger.Warnf("Tray quit clicked")
 				if app.State.Gui {
 					app.CloseGUI <- struct{}{}
 				}

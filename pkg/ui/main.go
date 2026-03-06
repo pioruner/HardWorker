@@ -6,10 +6,12 @@ import (
 
 	"github.com/AllenDang/giu"
 	"github.com/pioruner/HardWorker.git/pkg/app"
+	"github.com/pioruner/HardWorker.git/pkg/logger"
 )
 
 func close() bool {
 	if app.MacOS {
+		logger.Infof("GUI close callback triggered on macOS")
 		app.Event <- app.EventQuit
 	}
 	return true
@@ -18,16 +20,20 @@ func close() bool {
 func GUI(iconApp []byte, fontI []byte, modules ...app.Modules) {
 
 	if len(modules) == 0 {
+		logger.Warnf("GUI start skipped: no modules provided")
 		return
 	}
 
 	app.State.Gui = true
+	logger.Infof("GUI opened")
 
 	window := giu.NewMasterWindow(app.AppName, 1000, 450, giu.MasterWindowFlagsMaximized)
 
 	img, _, err := image.Decode(bytes.NewReader(iconApp))
 	if err == nil {
 		window.SetIcon(img)
+	} else {
+		logger.Warnf("GUI icon decode failed: %v", err)
 	}
 
 	window.SetCloseCallback(close)
@@ -45,6 +51,7 @@ func GUI(iconApp []byte, fontI []byte, modules ...app.Modules) {
 		select {
 		case <-app.CloseGUI:
 			window.SetShouldClose(true)
+			logger.Infof("GUI close signal received")
 			return
 		default:
 		}
@@ -95,4 +102,5 @@ func GUI(iconApp []byte, fontI []byte, modules ...app.Modules) {
 	})
 
 	app.State.Gui = false
+	logger.Infof("GUI closed")
 }

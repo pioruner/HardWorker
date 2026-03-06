@@ -3,7 +3,6 @@ package akip
 import (
 	"encoding/csv"
 	"encoding/json"
-	"log"
 	"net"
 	"os"
 	"path/filepath"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"github.com/pioruner/HardWorker.git/pkg/app"
+	"github.com/pioruner/HardWorker.git/pkg/logger"
 	"github.com/sqweek/dialog"
 )
 
@@ -126,7 +126,7 @@ func (ui *AkipUI) Run() {
 	go ui.connectionLoop()
 	go ui.gRPC()
 	go ui.registrationLoop()
-	log.Printf("Module Akip with name: %s --STARTED", ui.id)
+	logger.Infof("Module Akip started: %s", ui.id)
 }
 
 func (ui *AkipUI) Name() string {
@@ -152,8 +152,12 @@ func (ui *AkipUI) SetAddress(adr string) {
 func (ui *AkipUI) Save() {
 	path, err := AppConfigPath(ui.id)
 	if err == nil {
-		_ = SaveState(path, ui.ExportState())
+		if err = SaveState(path, ui.ExportState()); err != nil {
+			logger.Warnf("Akip state save failed (%s): %v", ui.id, err)
+		}
+		return
 	}
+	logger.Warnf("Akip state path resolve failed (%s): %v", ui.id, err)
 }
 
 func (ui *AkipUI) Load() {
@@ -161,8 +165,13 @@ func (ui *AkipUI) Load() {
 	if err == nil {
 		if state, err := LoadState(path); err == nil {
 			ui.ImportState(state)
+			logger.Infof("Akip state loaded: %s", path)
+			return
 		}
+		logger.Warnf("Akip state load skipped (%s): %v", path, err)
+		return
 	}
+	logger.Warnf("Akip state path resolve failed (%s): %v", ui.id, err)
 }
 
 func AppConfigPath(name string) (string, error) {
