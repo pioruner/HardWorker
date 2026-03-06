@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-const maxLines = 1000
+const maxLines = 100
 
 type logLevel int
 
@@ -62,10 +62,12 @@ func detectLevel(text string) logLevel {
 }
 
 func (ui *LogUI) add(text string, level logLevel) {
+	ui.mu.Lock()
+	defer ui.mu.Unlock()
 
 	ui.lines = append(ui.lines, logLine{text, level})
 
 	if len(ui.lines) > maxLines {
-		ui.lines = ui.lines[len(ui.lines)-maxLines:]
+		ui.lines = ui.lines[1:]
 	}
 }
