@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/AllenDang/giu"
-	"github.com/pioruner/HardWorker.git/pkg/app"
 )
 
 type SettsUI struct {
@@ -177,9 +176,9 @@ func (ui *SettsUI) UI() giu.Layout {
 					}
 					ui.saveStatus = "Настройки загружены: " + time.Now().Format("15:04:05")
 				}),
-				giu.Dummy(25, 0),
-				giu.Button("Скрыть окно").Size(150, 32).OnClick(func() { app.Event <- app.EventToggleGUI }),
-				giu.Button("Выход").Size(120, 32).OnClick(func() { app.Event <- app.EventQuit }),
+				//giu.Dummy(25, 0),
+				//giu.Button("Скрыть окно").Size(150, 32).OnClick(func() { app.Event <- app.EventToggleGUI }),
+				//giu.Button("Выход").Size(120, 32).OnClick(func() { app.Event <- app.EventQuit }),
 			),
 			giu.Separator(),
 			giu.Label(ui.saveStatus),
