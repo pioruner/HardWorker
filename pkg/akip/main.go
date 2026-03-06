@@ -133,6 +133,20 @@ func (ui *AkipUI) Name() string {
 	return ui.id
 }
 
+func (ui *AkipUI) SetAddress(adr string) {
+	adr = strings.TrimSpace(adr)
+	if adr == "" || adr == ui.adr {
+		return
+	}
+
+	ui.adr = adr
+	ui.lastResponse = "Адрес обновлён из настроек: " + adr
+	if ui.conn != nil {
+		_ = ui.conn.Close()
+	}
+	ui.setUpdate()
+}
+
 // LOAD && SAVE
 
 func (ui *AkipUI) Save() {
@@ -204,7 +218,11 @@ func (ui *AkipUI) ExportState() AkipState {
 }
 
 func (ui *AkipUI) ImportState(s AkipState) {
-	ui.adr = s.Adr
+	// Адрес приходит из общего модуля настроек, поэтому не перетираем его
+	// локальным состоянием Akip, если он уже задан.
+	if ui.adr == "" && s.Adr != "" {
+		ui.adr = s.Adr
+	}
 	ui.timeB = s.TimeB
 	ui.auto = false //s.Auto
 	ui.Hoffset = s.Hoffset

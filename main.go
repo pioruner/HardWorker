@@ -35,10 +35,17 @@ var set *setts.SettsUI
 var logs *loger.LogUI
 
 func Init() {
-	mod = append(mod, akip.Init("192.168.0.100:3000", "Сепаратор Ультразвуковой", ":50051"))
+	cfg := setts.LoadOrDefault()
+
+	akiper = akip.Init(cfg.AKIPAddress, "Сепаратор Ультразвуковой", cfg.GRPCPort)
+	mod = append(mod, akiper)
 	//mod = append(mod, visko.Init("192.168.0.200:502", "Вискозиметр Магнитный"))
-	//set=setts.Init()
-	//mod = append(mod, set) // set is nil, commented out
+	set = setts.Init(func(s setts.SettsState) {
+		if akiper != nil {
+			akiper.SetAddress(s.AKIPAddress)
+		}
+	})
+	mod = append(mod, set)
 
 	logs = loger.New()
 	log.SetOutput(io.MultiWriter(os.Stdout, &loger.UiWriter{Ui: logs}))
