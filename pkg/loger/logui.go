@@ -1,6 +1,7 @@
 package loger
 
 import (
+	"regexp"
 	"strings"
 	"sync"
 )
@@ -37,8 +38,11 @@ type UiWriter struct {
 	Ui *LogUI
 }
 
+var ansiColor = regexp.MustCompile(`\x1b\[[0-9;]*m`)
+
 func (w *UiWriter) Write(p []byte) (n int, err error) {
 	text := strings.TrimRight(string(p), "\n")
+	text = ansiColor.ReplaceAllString(text, "")
 
 	level := detectLevel(text)
 

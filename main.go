@@ -49,8 +49,11 @@ func Init() {
 	mod = append(mod, set)
 
 	logs = loger.New()
-	log.SetOutput(io.MultiWriter(os.Stdout, &loger.UiWriter{Ui: logs}))
+	multiOut := io.MultiWriter(os.Stdout, &loger.UiWriter{Ui: logs})
+	log.SetOutput(multiOut)
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+	logger.SetOutput(multiOut)
+	logger.SetFlags(log.LstdFlags | log.Lmicroseconds)
 	mod = append(mod, logs)
 	logger.Infof("Modules initialized: %d", len(mod))
 }

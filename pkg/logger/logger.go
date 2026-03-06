@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -14,6 +15,17 @@ const (
 )
 
 var base = log.New(os.Stderr, "", log.LstdFlags)
+
+func SetOutput(w io.Writer) {
+	if w == nil {
+		return
+	}
+	base.SetOutput(w)
+}
+
+func SetFlags(flags int) {
+	base.SetFlags(flags)
+}
 
 func Infof(format string, args ...any) {
 	logf("INFO", colorCyan, format, args...)
