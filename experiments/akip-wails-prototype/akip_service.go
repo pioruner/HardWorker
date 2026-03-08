@@ -90,6 +90,7 @@ type AkipService struct {
 	vTime        string
 	volume       string
 	registration bool
+	grpcAddress  string
 
 	conn  net.Conn
 	cmdCh chan string
@@ -100,23 +101,24 @@ type AkipService struct {
 
 func NewAkipService(id string) *AkipService {
 	s := &AkipService{
-		id:         id,
-		address:    "192.168.0.100:3000",
-		timeBase:   3,
-		hOffset:    "0",
-		reper:      "25",
-		square:     "10",
-		minY:       "20",
-		minMove:    "0.3",
-		autoSearch: false,
-		cursorMode: "start",
-		cursorPos:  [3]float64{18, 34, 62},
-		x:          []float64{0, 1, 2, 3},
-		y:          []float64{1, 1, 1, 1},
-		vSpeed:     "0.00",
-		vTime:      "0.00",
-		volume:     "0.00",
-		cmdCh:      make(chan string, 16),
+		id:          id,
+		address:     "192.168.0.100:3000",
+		timeBase:    3,
+		hOffset:     "0",
+		reper:       "25",
+		square:      "10",
+		minY:        "20",
+		minMove:     "0.3",
+		autoSearch:  false,
+		cursorMode:  "start",
+		cursorPos:   [3]float64{18, 34, 62},
+		x:           []float64{0, 1, 2, 3},
+		y:           []float64{1, 1, 1, 1},
+		vSpeed:      "0.00",
+		vTime:       "0.00",
+		volume:      "0.00",
+		grpcAddress: ":50051",
+		cmdCh:       make(chan string, 16),
 	}
 
 	s.loadState()
@@ -125,6 +127,7 @@ func NewAkipService(id string) *AkipService {
 
 func (s *AkipService) Start(ctx context.Context) {
 	go s.connectionLoop(ctx)
+	go s.grpcLoop(ctx)
 }
 
 func (s *AkipService) Shutdown() {
@@ -203,6 +206,16 @@ func (s *AkipService) GetSnapshot() AkipSnapshot {
 		Volume:       s.volume,
 		Registration: s.registration,
 	}
+}
+
+func (s *AkipService) volumeLevel() float32 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	v, err := strconv.ParseFloat(s.volume, 32)
+	if err != nil {
+		return -1.0
+	}
+	return float32(v)
 }
 
 func (s *AkipService) StartRegistration(path string) error {
