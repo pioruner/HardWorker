@@ -89,6 +89,8 @@ type AkipService struct {
 	vSpeed       string
 	vTime        string
 	volume       string
+	volumeAbs    float64
+	volumeRef    float64
 	registration bool
 	grpcAddress  string
 
@@ -117,6 +119,8 @@ func NewAkipService(id string) *AkipService {
 		vSpeed:      "0.00",
 		vTime:       "0.00",
 		volume:      "0.00",
+		volumeAbs:   0,
+		volumeRef:   0,
 		grpcAddress: ":50051",
 		cmdCh:       make(chan string, 16),
 	}
@@ -211,11 +215,15 @@ func (s *AkipService) GetSnapshot() AkipSnapshot {
 func (s *AkipService) volumeLevel() float32 {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	v, err := strconv.ParseFloat(s.volume, 32)
-	if err != nil {
-		return -1.0
-	}
-	return float32(v)
+	return float32(s.volumeAbs - s.volumeRef)
+}
+
+func (s *AkipService) ZeroVolumeReference() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.volumeRef = s.volumeAbs
+	s.volume = "0.00"
+	s.lastResponse = fmt.Sprintf("Опорный объем установлен: %.2f", s.volumeRef)
 }
 
 func (s *AkipService) StartRegistration(path string) error {
@@ -480,9 +488,11 @@ func (s *AkipService) calc() {
 	speed := rep / 100
 	sq, _ := strconv.ParseFloat(s.square, 64)
 	volume := waveTime * rep * sq / 1000000
+	delta := volume - s.volumeRef
 	s.vTime = fmt.Sprintf("%.2f", waveTime)
 	s.vSpeed = fmt.Sprintf("%.2f", speed)
-	s.volume = fmt.Sprintf("%.2f", volume)
+	s.volumeAbs = volume
+	s.volume = fmt.Sprintf("%.2f", delta)
 }
 
 func (s *AkipService) findPeakAndAdjust(hoffs float64) {

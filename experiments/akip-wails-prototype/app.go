@@ -60,3 +60,8 @@ func (a *App) SetRegistration(enabled bool) AkipSnapshot {
 	_ = a.akip.StartRegistration(path)
 	return a.akip.GetSnapshot()
 }
+
+func (a *App) ZeroVolumeReference() AkipSnapshot {
+	a.akip.ZeroVolumeReference()
+	return a.akip.GetSnapshot()
+}

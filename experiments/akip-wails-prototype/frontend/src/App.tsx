@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import ReactECharts from "echarts-for-react";
 import "./App.scss";
-import { ApplyControls, GetSnapshot, SetRegistration } from "../wailsjs/go/main/App";
+import { ApplyControls, GetSnapshot, SetRegistration, ZeroVolumeReference } from "../wailsjs/go/main/App";
 import { defaultSnapshot, toControls, useAkipStore, type AkipSnapshot, type CursorMode } from "./store/akipStore";
 
 const timeScaleValues = ["1us", "2us", "5us", "10us", "20us", "50us", "100us"];
@@ -197,9 +197,12 @@ function App() {
           <strong>{snapshot.vTime} мкс</strong>
         </div>
         <div className="metric">
-          <span>Объём фазы</span>
+          <span>Изменение объёма</span>
           <strong>{snapshot.volume} см³</strong>
         </div>
+        <button className="toggle" onClick={() => void ZeroVolumeReference().then((next) => setSnapshot(asSnapshot(next)))}>
+          Обнулить объём
+        </button>
         <button className={`toggle ${snapshot.registration ? "is-active" : ""}`} onClick={toggleRegistration}>
           {snapshot.registration ? "Регистрация: вкл" : "Регистрация: выкл"}
         </button>

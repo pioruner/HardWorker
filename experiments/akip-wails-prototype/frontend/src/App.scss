@@ -44,7 +44,7 @@
 
 .panel-metrics {
   display: grid;
-  grid-template-columns: repeat(3, minmax(140px, 1fr)) minmax(170px, auto);
+  grid-template-columns: repeat(3, minmax(140px, 1fr)) minmax(170px, auto) minmax(170px, auto);
   gap: 10px;
   align-items: center;
 }

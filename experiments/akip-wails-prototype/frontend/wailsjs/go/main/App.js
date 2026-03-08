@@ -13,3 +13,7 @@ export function GetSnapshot() {
 export function SetRegistration(arg1) {
   return window['go']['main']['App']['SetRegistration'](arg1);
 }
+
+export function ZeroVolumeReference() {
+  return window['go']['main']['App']['ZeroVolumeReference']();
+}
