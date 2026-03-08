@@ -6,6 +6,10 @@ export function ApplyControls(arg1) {
   return window['go']['main']['App']['ApplyControls'](arg1);
 }
 
+export function GetLogs() {
+  return window['go']['main']['App']['GetLogs']();
+}
+
 export function GetSnapshot() {
   return window['go']['main']['App']['GetSnapshot']();
 }

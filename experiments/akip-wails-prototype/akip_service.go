@@ -69,7 +69,8 @@ type AkipSnapshot struct {
 type AkipService struct {
 	id string
 
-	mu sync.RWMutex
+	mu   sync.RWMutex
+	logs *LogBuffer
 
 	address    string
 	timeBase   int
@@ -123,9 +124,11 @@ func NewAkipService(id string) *AkipService {
 		volumeRef:   0,
 		grpcAddress: ":50051",
 		cmdCh:       make(chan string, 16),
+		logs:        NewLogBuffer(500),
 	}
 
 	s.loadState()
+	s.logInfo("AKIP service initialized")
 	return s
 }
 
@@ -135,6 +138,7 @@ func (s *AkipService) Start(ctx context.Context) {
 }
 
 func (s *AkipService) Shutdown() {
+	s.logInfo("AKIP service shutdown started")
 	s.StopRegistration()
 	s.saveState()
 	s.mu.Lock()
@@ -143,6 +147,7 @@ func (s *AkipService) Shutdown() {
 		s.conn = nil
 	}
 	s.mu.Unlock()
+	s.logInfo("AKIP service shutdown complete")
 }
 
 func (s *AkipService) ApplyControls(in AkipControls) {
@@ -155,6 +160,7 @@ func (s *AkipService) ApplyControls(in AkipControls) {
 	oldAddress := s.address
 	oldTimeBase := s.timeBase
 	oldHOffset := s.hOffset
+	oldAutoSearch := s.autoSearch
 
 	s.address = address
 	s.timeBase = clampTimeBase(in.TimeBase)
@@ -170,6 +176,23 @@ func (s *AkipService) ApplyControls(in AkipControls) {
 	s.cursorPos = in.CursorPos
 	conn := s.conn
 	s.mu.Unlock()
+
+	if oldAddress != address {
+		s.logInfo("Address changed to " + address)
+	}
+	if oldTimeBase != s.timeBase {
+		s.logInfo(fmt.Sprintf("Timebase changed to %s", timeScaleS[s.timeBase]))
+	}
+	if oldHOffset != s.hOffset {
+		s.logDebug("Horizontal offset changed to " + s.hOffset)
+	}
+	if oldAutoSearch != s.autoSearch {
+		if s.autoSearch {
+			s.logInfo("Autosearch enabled")
+		} else {
+			s.logInfo("Autosearch disabled")
+		}
+	}
 
 	if oldAddress != address && conn != nil {
 		_ = conn.Close()
@@ -212,6 +235,10 @@ func (s *AkipService) GetSnapshot() AkipSnapshot {
 	}
 }
 
+func (s *AkipService) GetLogs() []LogEntry {
+	return s.logs.Snapshot()
+}
+
 func (s *AkipService) volumeLevel() float32 {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -224,6 +251,7 @@ func (s *AkipService) ZeroVolumeReference() {
 	s.volumeRef = s.volumeAbs
 	s.volume = "0.00"
 	s.lastResponse = fmt.Sprintf("Опорный объем установлен: %.2f", s.volumeRef)
+	s.logInfo(s.lastResponse)
 }
 
 func (s *AkipService) StartRegistration(path string) error {
@@ -258,6 +286,7 @@ func (s *AkipService) StartRegistration(path string) error {
 	s.regFile = f
 	s.regWriter = w
 	s.registration = true
+	s.logInfo("Registration started: " + path)
 	return nil
 }
 
@@ -278,6 +307,7 @@ func (s *AkipService) stopRegistrationLocked() error {
 		s.regFile = nil
 	}
 	s.registration = false
+	s.logs.Add(LogInfo, "Registration stopped")
 	return err
 }
 
@@ -292,6 +322,7 @@ func (s *AkipService) connectionLoop(ctx context.Context) {
 		}
 
 		address := s.getAddress()
+		s.logInfo("Connecting to " + address)
 		conn, err := net.DialTimeout("tcp", address, time.Second)
 		if err != nil {
 			s.setDisconnected(err.Error())
@@ -304,6 +335,7 @@ func (s *AkipService) connectionLoop(ctx context.Context) {
 		s.connected = true
 		s.lastResponse = "Connected"
 		s.mu.Unlock()
+		s.logInfo("Connected to " + address)
 
 		s.enqueueCommand(":SDSLSCPI#")
 		s.enqueueCommand(s.timeBaseCommand())
@@ -318,8 +350,10 @@ func (s *AkipService) connectionLoop(ctx context.Context) {
 		s.connected = false
 		if err != nil {
 			s.lastResponse = "Disconnected: " + err.Error()
+			s.logWarn("Disconnected: " + err.Error())
 		} else {
 			s.lastResponse = "Disconnected"
+			s.logInfo("Disconnected")
 		}
 		s.mu.Unlock()
 
@@ -369,6 +403,7 @@ func (s *AkipService) setDisconnected(msg string) {
 	s.connected = false
 	s.lastResponse = msg
 	s.mu.Unlock()
+	s.logWarn("Connection failed: " + msg)
 }
 
 func (s *AkipService) getAddress() string {
@@ -410,6 +445,7 @@ func (s *AkipService) offsetCommand() string {
 func (s *AkipService) sendCommand(conn net.Conn, cmd string) error {
 	_ = conn.SetWriteDeadline(time.Now().Add(time.Second))
 	if _, err := conn.Write([]byte(cmd)); err != nil {
+		s.logError("Command send failed: " + err.Error())
 		return err
 	}
 
@@ -423,28 +459,33 @@ func (s *AkipService) sendCommand(conn net.Conn, cmd string) error {
 func (s *AkipService) readWave(conn net.Conn) error {
 	_ = conn.SetWriteDeadline(time.Now().Add(time.Second))
 	if _, err := conn.Write([]byte("STARTBIN")); err != nil {
+		s.logError("STARTBIN write failed: " + err.Error())
 		return err
 	}
 
 	header := make([]byte, 12)
 	_ = conn.SetReadDeadline(time.Now().Add(time.Second))
 	if _, err := io.ReadFull(conn, header); err != nil {
+		s.logError("Wave header read failed: " + err.Error())
 		return err
 	}
 
 	size := binary.LittleEndian.Uint16(header[0:2])
 	if size == 0 || size > 65535 {
+		s.logError(fmt.Sprintf("Invalid payload size: %d", size))
 		return fmt.Errorf("invalid payload size: %d", size)
 	}
 
 	payload := make([]byte, size)
 	if _, err := io.ReadFull(conn, payload); err != nil {
+		s.logError("Wave payload read failed: " + err.Error())
 		return err
 	}
 
 	packet := append(header, payload...)
 	data, hoffs, nData, err := unpackChannel(packet)
 	if err != nil {
+		s.logError("Wave unpack failed: " + err.Error())
 		return err
 	}
 
@@ -644,11 +685,13 @@ func (s *AkipService) loadState() {
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
+		s.logInfo("No saved state file, using defaults")
 		return
 	}
 
 	var state persistedState
 	if err := json.Unmarshal(data, &state); err != nil {
+		s.logWarn("State parse failed, using defaults")
 		return
 	}
 
@@ -667,4 +710,21 @@ func (s *AkipService) loadState() {
 		s.cursorMode = state.CursorMode
 	}
 	s.cursorPos = state.CursorPos
+	s.logInfo("State loaded from " + path)
+}
+
+func (s *AkipService) logInfo(message string) {
+	s.logs.Add(LogInfo, message)
+}
+
+func (s *AkipService) logWarn(message string) {
+	s.logs.Add(LogWarn, message)
+}
+
+func (s *AkipService) logError(message string) {
+	s.logs.Add(LogError, message)
+}
+
+func (s *AkipService) logDebug(message string) {
+	s.logs.Add(LogDebug, message)
 }

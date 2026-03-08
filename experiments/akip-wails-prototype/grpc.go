@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"net"
 
 	akipproto "akip-wails-prototype/proto"
@@ -21,7 +20,7 @@ func (s *akipGRPCServer) Data(ctx context.Context, req *akipproto.AkipRequest) (
 func (s *AkipService) grpcLoop(ctx context.Context) {
 	lis, err := net.Listen("tcp", s.grpcAddress)
 	if err != nil {
-		log.Printf("gRPC listen failed on %s: %v", s.grpcAddress, err)
+		s.logError("gRPC listen failed on " + s.grpcAddress + ": " + err.Error())
 		return
 	}
 	defer lis.Close()
@@ -34,8 +33,8 @@ func (s *AkipService) grpcLoop(ctx context.Context) {
 		server.Stop()
 	}()
 
-	log.Printf("gRPC server is running on %s", s.grpcAddress)
+	s.logInfo("gRPC server is running on " + s.grpcAddress)
 	if err := server.Serve(lis); err != nil {
-		log.Printf("gRPC server stopped: %v", err)
+		s.logWarn("gRPC server stopped: " + err.Error())
 	}
 }

@@ -23,6 +23,12 @@ export type AkipSnapshot = {
   registration: boolean;
 };
 
+export type LogEntry = {
+  time: string;
+  level: "INFO" | "WARN" | "ERROR" | "DEBUG";
+  message: string;
+};
+
 export type AkipControls = {
   address: string;
   timeBase: number;
@@ -38,7 +44,9 @@ export type AkipControls = {
 
 type AkipState = {
   snapshot: AkipSnapshot;
+  logs: LogEntry[];
   setSnapshot: (snapshot: AkipSnapshot) => void;
+  setLogs: (logs: LogEntry[]) => void;
   patchControls: (next: Partial<AkipControls>) => void;
 };
 
@@ -65,7 +73,9 @@ export const defaultSnapshot: AkipSnapshot = {
 
 export const useAkipStore = create<AkipState>((set) => ({
   snapshot: defaultSnapshot,
+  logs: [],
   setSnapshot: (snapshot) => set({ snapshot }),
+  setLogs: (logs) => set({ logs }),
   patchControls: (next) =>
     set((state) => ({
       snapshot: {

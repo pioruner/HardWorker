@@ -37,6 +37,10 @@ func (a *App) ApplyControls(in AkipControls) AkipSnapshot {
 	return a.akip.GetSnapshot()
 }
 
+func (a *App) GetLogs() []LogEntry {
+	return a.akip.GetLogs()
+}
+
 func (a *App) SetRegistration(enabled bool) AkipSnapshot {
 	if !enabled {
 		a.akip.StopRegistration()
