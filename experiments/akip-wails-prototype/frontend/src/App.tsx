@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactECharts from "echarts-for-react";
 import "./App.scss";
 import { ApplyControls, GetLogs, GetSnapshot, SetRegistration, ZeroVolumeReference } from "../wailsjs/go/main/App";
@@ -48,6 +48,9 @@ function App() {
   const [view, setView] = useState<"akip" | "logs">("akip");
   const [logsPaused, setLogsPaused] = useState(false);
   const [logsUiOffset, setLogsUiOffset] = useState(0);
+  const chartRef = useRef<ReactECharts>(null);
+  const chartHostRef = useRef<HTMLDivElement>(null);
+  const stabilizeTimerRef = useRef<number | null>(null);
   const snapshot = useAkipStore((state) => state.snapshot);
   const logs = useAkipStore((state) => state.logs);
   const setSnapshot = useAkipStore((state) => state.setSnapshot);
@@ -143,7 +146,10 @@ function App() {
         type: "value",
         min: xMin,
         max: xMax,
-        axisLabel: { color: "#bdc8d8" },
+        axisLabel: {
+          color: "#bdc8d8",
+          formatter: (value: number) => `${Math.round(value)}`,
+        },
         splitLine: { lineStyle: { color: "rgba(136, 156, 180, 0.18)" } },
       },
       yAxis: {
@@ -188,6 +194,78 @@ function App() {
   );
 
   const visibleLogs = logs.slice(logsUiOffset);
+
+  const forceChartResize = useCallback(() => {
+    const host = chartHostRef.current;
+    const chart = chartRef.current?.getEchartsInstance();
+    if (!host || !chart) {
+      return;
+    }
+    const width = host.clientWidth;
+    const height = host.clientHeight;
+    if (width <= 0 || height <= 0) {
+      return;
+    }
+    chart.resize({ width, height });
+  }, []);
+
+  const startChartStabilization = useCallback(() => {
+    if (stabilizeTimerRef.current !== null) {
+      window.clearInterval(stabilizeTimerRef.current);
+      stabilizeTimerRef.current = null;
+    }
+    let ticks = 0;
+    stabilizeTimerRef.current = window.setInterval(() => {
+      forceChartResize();
+      ticks += 1;
+      if (ticks >= 20) {
+        if (stabilizeTimerRef.current !== null) {
+          window.clearInterval(stabilizeTimerRef.current);
+          stabilizeTimerRef.current = null;
+        }
+      }
+    }, 100);
+  }, [forceChartResize]);
+
+  useEffect(() => {
+    const host = chartHostRef.current;
+    if (!host) {
+      return;
+    }
+
+    const observer = new ResizeObserver(() => {
+      forceChartResize();
+    });
+    observer.observe(host);
+
+    return () => {
+      observer.disconnect();
+      if (stabilizeTimerRef.current !== null) {
+        window.clearInterval(stabilizeTimerRef.current);
+        stabilizeTimerRef.current = null;
+      }
+    };
+  }, [forceChartResize]);
+
+  useEffect(() => {
+    if (view !== "akip") {
+      return;
+    }
+    const resize = () => forceChartResize();
+    const raf = window.requestAnimationFrame(resize);
+    const t1 = window.setTimeout(resize, 120);
+    const t2 = window.setTimeout(resize, 380);
+    startChartStabilization();
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      if (stabilizeTimerRef.current !== null) {
+        window.clearInterval(stabilizeTimerRef.current);
+        stabilizeTimerRef.current = null;
+      }
+    };
+  }, [forceChartResize, startChartStabilization, view]);
 
   return (
     <main className="akip-layout">
@@ -285,8 +363,16 @@ function App() {
 
           <section className="panel panel-chart">
             <div className="panel-title">Осциллограмма</div>
-            <div className="chart-host">
-              <ReactECharts option={chartOptions} style={{ height: "100%", width: "100%" }} />
+            <div className="chart-host" ref={chartHostRef}>
+              <ReactECharts
+                ref={chartRef}
+                option={chartOptions}
+                style={{ height: "100%", width: "100%" }}
+                onChartReady={() => {
+                  forceChartResize();
+                  startChartStabilization();
+                }}
+              />
             </div>
           </section>
 

@@ -434,6 +434,10 @@ func (s *AkipService) offsetCommand() string {
 	tb := clampTimeBase(s.timeBase)
 	hOffset := s.hOffset
 	s.mu.RUnlock()
+	return buildOffsetCommand(tb, hOffset)
+}
+
+func buildOffsetCommand(tb int, hOffset string) string {
 	hoff, err := strconv.ParseFloat(hOffset, 64)
 	if err != nil {
 		return ""
@@ -537,9 +541,11 @@ func (s *AkipService) calc() {
 }
 
 func (s *AkipService) findPeakAndAdjust(hoffs float64) {
+	var offsetCmd string
+
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	if !s.autoSearch || len(s.x) == 0 || len(s.y) == 0 {
+		s.mu.Unlock()
 		return
 	}
 
@@ -553,6 +559,7 @@ func (s *AkipService) findPeakAndAdjust(hoffs float64) {
 		}
 	}
 	if minX < 0 || maxX < 0 {
+		s.mu.Unlock()
 		return
 	}
 
@@ -568,6 +575,7 @@ func (s *AkipService) findPeakAndAdjust(hoffs float64) {
 	minR, _ := strconv.ParseFloat(s.minY, 64)
 	minMove, _ := strconv.ParseFloat(s.minMove, 64)
 	if maxY <= minR {
+		s.mu.Unlock()
 		return
 	}
 	s.cursorPos[2] = s.x[maxIdx]
@@ -575,35 +583,92 @@ func (s *AkipService) findPeakAndAdjust(hoffs float64) {
 		offset = 0
 	}
 	if offset == 0 {
+		s.mu.Unlock()
 		return
 	}
 
 	tb := clampTimeBase(s.timeBase)
 	s.hOffset = fmt.Sprintf("%.0f", hoffs-offset-baseOffset[tb])
-	go s.enqueueCommand(s.offsetCommand())
+	offsetCmd = buildOffsetCommand(tb, s.hOffset)
+	s.mu.Unlock()
+
+	s.enqueueCommand(offsetCmd)
 }
 
 func unpackChannel(packet []byte) ([]int8, float64, int, error) {
-	size := binary.LittleEndian.Uint16(packet[0:2])
-	dataBuf := packet[12:size]
+	if len(packet) < 12 {
+		return nil, 0, 0, fmt.Errorf("wave packet too short")
+	}
+
+	size := int(binary.LittleEndian.Uint16(packet[0:2]))
+	if size <= 0 {
+		return nil, 0, 0, fmt.Errorf("invalid wave payload size: %d", size)
+	}
+
+	// Compatibility mode:
+	// 1) payload-size semantics: packet = 12-byte header + payload(size)
+	// 2) legacy total-size semantics from old module: data slice packet[12:size]
+	type candidate struct {
+		name string
+		data []byte
+	}
+	candidates := make([]candidate, 0, 2)
+	if len(packet) >= 12+size {
+		candidates = append(candidates, candidate{
+			name: "payload-size",
+			data: packet[12 : 12+size],
+		})
+	}
+	if size > 12 && len(packet) >= size {
+		candidates = append(candidates, candidate{
+			name: "legacy-total-size",
+			data: packet[12:size],
+		})
+	}
+	if len(candidates) == 0 {
+		return nil, 0, 0, fmt.Errorf("short wave payload: got %d need %d", len(packet)-12, size)
+	}
+
+	var lastErr error
+	for _, c := range candidates {
+		wave, hoffs, nData, err := unpackCH1(c.data)
+		if err == nil {
+			return wave, hoffs, nData, nil
+		}
+		lastErr = fmt.Errorf("%s: %w", c.name, err)
+	}
+	return nil, 0, 0, lastErr
+}
+
+func unpackCH1(dataBuf []byte) ([]int8, float64, int, error) {
 	ch1 := bytes.Index(dataBuf, []byte{0x43, 0x48, 0x31})
 	if ch1 == -1 {
 		return nil, 0, 0, fmt.Errorf("channel CH1 not found")
 	}
+	if ch1 < 12 {
+		return nil, 0, 0, fmt.Errorf("invalid CH1 marker offset: %d", ch1)
+	}
+	if ch1+59 > len(dataBuf) {
+		return nil, 0, 0, fmt.Errorf("wave header truncated")
+	}
 
 	nData := int(binary.LittleEndian.Uint16(dataBuf[ch1+15 : ch1+17]))
+	if nData <= 0 {
+		return nil, 0, 0, fmt.Errorf("invalid wave points count: %d", nData)
+	}
+
 	hMove := binary.LittleEndian.Uint16(dataBuf[ch1+31 : ch1+33])
 	hoffs := float64(math.Float32frombits(binary.LittleEndian.Uint32(dataBuf[ch1-12 : ch1-8])))
 	shift := ch1 + 59
+	if shift+nData*2 > len(dataBuf) {
+		return nil, 0, 0, fmt.Errorf("wave payload truncated")
+	}
+
 	wave := make([]int8, nData)
 	for i := 0; i < nData; i++ {
-		if shift+2 > len(dataBuf) {
-			return nil, 0, 0, fmt.Errorf("wave buffer overflow")
-		}
 		wave[i] = int8(binary.LittleEndian.Uint16(dataBuf[shift:shift+2]) + hMove)
 		shift += 2
 	}
-
 	return wave, hoffs, nData, nil
 }
 
