@@ -7,7 +7,7 @@ ICON=assets/icon.ico
 AKIP_APP_DIR=apps/akip
 VISCO_APP_DIR=apps/visco
 
-.PHONY: run build clean proto akip-dev akip-build visco-dev visco-build
+.PHONY: run build clean proto akip-dev akip-build akip-build-windows visco-dev visco-build visco-build-windows windows-build
 
 run:
 	$(GO) run .
@@ -39,8 +39,16 @@ akip-dev:
 akip-build:
 	cd $(AKIP_APP_DIR) && $$(go env GOPATH)/bin/wails build -clean
 
+akip-build-windows:
+	cd $(AKIP_APP_DIR) && $$(go env GOPATH)/bin/wails build -platform windows/amd64 -clean
+
 visco-dev:
 	cd $(VISCO_APP_DIR) && $$(go env GOPATH)/bin/wails dev
 
 visco-build:
 	cd $(VISCO_APP_DIR) && $$(go env GOPATH)/bin/wails build -clean
+
+visco-build-windows:
+	cd $(VISCO_APP_DIR) && $$(go env GOPATH)/bin/wails build -platform windows/amd64 -clean
+
+windows-build: akip-build-windows visco-build-windows
