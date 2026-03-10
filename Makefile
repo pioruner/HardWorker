@@ -4,7 +4,10 @@ GO=go
 APP=HardWorker
 ICON=assets/icon.ico
 
-.PHONY: run build clean proto
+AKIP_APP_DIR=apps/akip
+VISCO_APP_DIR=apps/visco
+
+.PHONY: run build clean proto akip-dev akip-build visco-dev visco-build
 
 run:
 	$(GO) run .
@@ -29,3 +32,15 @@ clean:
 
 proto:
 	protoc --go_out=./pkg/proto --go_opt=paths=source_relative --go-grpc_out=./pkg/proto --go-grpc_opt=paths=source_relative grpc.proto
+
+akip-dev:
+	cd $(AKIP_APP_DIR) && $$(go env GOPATH)/bin/wails dev
+
+akip-build:
+	cd $(AKIP_APP_DIR) && $$(go env GOPATH)/bin/wails build -clean
+
+visco-dev:
+	cd $(VISCO_APP_DIR) && $$(go env GOPATH)/bin/wails dev
+
+visco-build:
+	cd $(VISCO_APP_DIR) && $$(go env GOPATH)/bin/wails build -clean
