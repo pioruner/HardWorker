@@ -126,9 +126,16 @@
 - Ресурсоемкие сборки (`wails build`, release-артефакты) выполняются только после явного одобрения пользователя.
 
 ## 13. Где смотреть рабочую реализацию
-- Backend сервис: `experiments/akip-wails-prototype/akip_service.go`
-- gRPC: `experiments/akip-wails-prototype/grpc.go`
-- Wails app bindings: `experiments/akip-wails-prototype/app.go`
-- UI экран: `experiments/akip-wails-prototype/frontend/src/App.tsx`
-- UI store: `experiments/akip-wails-prototype/frontend/src/store/akipStore.ts`
-- Стили: `experiments/akip-wails-prototype/frontend/src/App.scss`
+- Backend сервис: `apps/akip/akip_service.go`
+- gRPC: `apps/akip/grpc.go`
+- Wails app bindings: `apps/akip/app.go`
+- UI экран: `apps/akip/frontend/src/App.tsx`
+- UI store: `apps/akip/frontend/src/store/akipStore.ts`
+- Стили: `apps/akip/frontend/src/App.scss`
+
+## 14. Применение к VISCO
+- Отдельное приложение VISCO находится в `apps/visco` и использует ту же базовую схему:
+  - backend service в Go как source of truth;
+  - frontend на React/TS через Wails bindings;
+  - встроенный лог-модуль (`GetLogs`, вкладка `Логи`, `Пауза/Продолжить`, `Очистить`).
+- gRPC для VISCO пока не обязателен (опциональный слой из раздела 9).

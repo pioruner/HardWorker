@@ -1,10 +1,10 @@
 # Wails AKIP Project Structure
 
 ## Назначение документа
-Этот документ описывает структуру `experiments/akip-wails-prototype`, роли файлов и их связи, чтобы безопасно переносить решение в основное приложение.
+Этот документ описывает структуру `apps/akip`, роли файлов и их связи, чтобы безопасно развивать основное AKIP-приложение.
 
 ## 1. Корень проекта
-Путь: `experiments/akip-wails-prototype`
+Путь: `apps/akip`
 
 Ключевые файлы:
 - `main.go`: точка входа Wails-приложения, параметры окна, lifecycle hooks, bind backend-методов.
@@ -107,7 +107,7 @@
 - `frontend/dist/`: сборка frontend.
 - `frontend/node_modules/`: npm зависимости.
 
-Для миграции в основной проект:
+Для чистой разработки:
 - `build/bin`, `frontend/dist`, `frontend/node_modules` не являются бизнес-исходниками;
 - их можно пересобрать, не переносить как источник логики.
 
@@ -122,11 +122,11 @@
    - читает snapshot/logs;
    - отправляет controls/команды.
 
-## 8. Что переносить в основное приложение в первую очередь
-1. `akip_service.go`, `grpc.go`, `logs.go`, `app.go` (ядро backend).
-2. `frontend/src/App.tsx`, `frontend/src/store/akipStore.ts`, `frontend/src/App.scss` (UI + state).
-3. `proto/*` (если сохраняется текущий gRPC контракт).
-4. `main.go` параметры окна и bind/lifecycle.
+## 8. Что переиспользовать при создании нового приложения
+1. `logs.go`, `app.go`, `main.go` (каркас backend + lifecycle).
+2. паттерн frontend-вкладок и log-экрана из `frontend/src/App.tsx`.
+3. подход к bindings (`frontend/wailsjs/*` генерируется из Go-методов).
+4. шаблон `wails.json` и build-структуры `build/*`.
 
 ## 9. Что чаще всего меняется при переходе в production
 - название модуля в `go.mod`;
@@ -141,4 +141,3 @@
 2. Не участвует ли файл в автогенерации bindings (`frontend/wailsjs`).
 3. Не используется ли тип в `proto/*` и gRPC-сервисе.
 4. Не сломает ли удаление сохранение state/CSV/логирование.
-
