@@ -83,6 +83,53 @@ function asLogs(value: unknown): LogEntry[] {
     });
 }
 
+function getMinMax(values: number[]): [number, number] {
+  if (values.length === 0) {
+    return [0, 1];
+  }
+
+  let min = values[0];
+  let max = values[0];
+  for (const value of values) {
+    if (value < min) {
+      min = value;
+    }
+    if (value > max) {
+      max = value;
+    }
+  }
+
+  let padding = (max - min) * 0.1;
+  if (padding === 0) {
+    padding = Math.abs(max) > 0 ? Math.abs(max) * 0.05 : 1;
+  }
+
+  return [min - padding, max + padding];
+}
+
+function formatWhole(value: number): string {
+  return `${Math.round(value)}`;
+}
+
+function formatFixed2(value: number): string {
+  return Number(value.toFixed(2)).toString();
+}
+
+function mean(values: number[]): number {
+  if (values.length === 0) {
+    return 0;
+  }
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function relativeMeanAbsErrorPercent(values: number[], average: number): number {
+  if (values.length === 0 || average === 0) {
+    return 0;
+  }
+  const absDeviationMean = values.reduce((sum, value) => sum + Math.abs(value - average), 0) / values.length;
+  return (absDeviationMean / Math.abs(average)) * 100;
+}
+
 function App() {
   const [view, setView] = useState<"visco" | "logs">("visco");
   const [logsPaused, setLogsPaused] = useState(false);
@@ -141,10 +188,23 @@ function App() {
   const u1 = useMemo(() => rows.map((r) => r.u1), [rows]);
   const u2 = useMemo(() => rows.map((r) => r.u2), [rows]);
   const temp = useMemo(() => rows.map((r) => r.temp), [rows]);
+  const t1Avg = useMemo(() => mean(t1), [t1]);
+  const t2Avg = useMemo(() => mean(t2), [t2]);
+  const tempAvg = useMemo(() => mean(temp), [temp]);
+  const t1Error = useMemo(() => relativeMeanAbsErrorPercent(t1, t1Avg), [t1, t1Avg]);
+  const t2Error = useMemo(() => relativeMeanAbsErrorPercent(t2, t2Avg), [t2, t2Avg]);
+  const [timeYMin, timeYMax] = useMemo(() => getMinMax([...t1, ...t2]), [t1, t2]);
+  const [voltageYMin, voltageYMax] = useMemo(() => getMinMax([...u1, ...u2]), [u1, u2]);
+  const [tempYMin, tempYMax] = useMemo(() => getMinMax(temp), [temp]);
 
   const xMax = x.length > 1 ? x[x.length - 1] : 1;
 
-  const makeChartOptions = (series: Array<{ name: string; data: number[] }>) => ({
+  const makeChartOptions = (
+    series: Array<{ name: string; data: number[] }>,
+    yMin: number,
+    yMax: number,
+    yAxisFormatter: (value: number) => string,
+  ) => ({
     animation: false,
     backgroundColor: "transparent",
     tooltip: { trigger: "axis" },
@@ -168,7 +228,9 @@ function App() {
     },
     yAxis: {
       type: "value",
-      axisLabel: { color: "#bdc8d8" },
+      min: yMin,
+      max: yMax,
+      axisLabel: { color: "#bdc8d8", formatter: yAxisFormatter },
       splitLine: { lineStyle: { color: "rgba(136, 156, 180, 0.18)" } },
     },
     series: series.map((s) => ({
@@ -185,16 +247,16 @@ function App() {
   });
 
   const timeChartOptions = useMemo(
-    () => makeChartOptions([{ name: "T1", data: t1 }, { name: "T2", data: t2 }]),
-    [snapshot.cursorIndex, t1, t2, xMax],
+    () => makeChartOptions([{ name: "T1", data: t1 }, { name: "T2", data: t2 }], timeYMin, timeYMax, formatWhole),
+    [snapshot.cursorIndex, t1, t2, timeYMax, timeYMin, xMax],
   );
   const voltageChartOptions = useMemo(
-    () => makeChartOptions([{ name: "U1", data: u1 }, { name: "U2", data: u2 }]),
-    [snapshot.cursorIndex, u1, u2, xMax],
+    () => makeChartOptions([{ name: "U1", data: u1 }, { name: "U2", data: u2 }], voltageYMin, voltageYMax, formatFixed2),
+    [snapshot.cursorIndex, u1, u2, voltageYMax, voltageYMin, xMax],
   );
   const tempChartOptions = useMemo(
-    () => makeChartOptions([{ name: "Temp", data: temp }]),
-    [snapshot.cursorIndex, temp, xMax],
+    () => makeChartOptions([{ name: "Temp", data: temp }], tempYMin, tempYMax, formatFixed2),
+    [snapshot.cursorIndex, temp, tempYMax, tempYMin, xMax],
   );
 
   const onApplyAddress = async () => {
@@ -406,6 +468,13 @@ function App() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+                <div className="visco-table-summary">
+                  <div className="metric"><span>T1 среднее</span><strong>{t1Avg.toFixed(2)}</strong></div>
+                  <div className="metric"><span>T2 среднее</span><strong>{t2Avg.toFixed(2)}</strong></div>
+                  <div className="metric"><span>T1 ошибка %</span><strong>{t1Error.toFixed(2)}</strong></div>
+                  <div className="metric"><span>T2 ошибка %</span><strong>{t2Error.toFixed(2)}</strong></div>
+                  <div className="metric"><span>Temp среднее</span><strong>{tempAvg.toFixed(2)}</strong></div>
                 </div>
               </section>
             </aside>

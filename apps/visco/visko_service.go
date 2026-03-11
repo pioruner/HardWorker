@@ -15,6 +15,10 @@ import (
 	"github.com/simonvetter/modbus"
 )
 
+func formatCSVFloat(value float64, precision int) string {
+	return strings.ReplaceAll(fmt.Sprintf("%.*f", precision, value), ".", ",")
+}
+
 type ViskoRow struct {
 	T1   float64 `json:"t1"`
 	T2   float64 `json:"t2"`
@@ -244,6 +248,7 @@ func (s *ViskoService) ExportCSV(path string) error {
 	defer f.Close()
 
 	w := csv.NewWriter(f)
+	w.Comma = ';'
 	defer w.Flush()
 
 	if err := w.Write([]string{"T1", "T2", "U1", "U2", "Temp"}); err != nil {
@@ -252,11 +257,11 @@ func (s *ViskoService) ExportCSV(path string) error {
 
 	for _, r := range rows {
 		record := []string{
-			fmt.Sprintf("%.1f", r.T1),
-			fmt.Sprintf("%.1f", r.T2),
-			fmt.Sprintf("%.2f", r.U1),
-			fmt.Sprintf("%.2f", r.U2),
-			fmt.Sprintf("%.1f", r.Temp),
+			formatCSVFloat(r.T1, 1),
+			formatCSVFloat(r.T2, 1),
+			formatCSVFloat(r.U1, 2),
+			formatCSVFloat(r.U2, 2),
+			formatCSVFloat(r.Temp, 1),
 		}
 		if err := w.Write(record); err != nil {
 			return err

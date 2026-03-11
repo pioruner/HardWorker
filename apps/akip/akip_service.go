@@ -32,6 +32,10 @@ var (
 	baseOffset = []float64{7.6 * 1, 7.6 * 2, 7.6 * 5, 7.6 * 10, 7.6 * 20, 7.6 * 50, 7.6 * 100}
 )
 
+func formatCSVDecimal(value string) string {
+	return strings.ReplaceAll(value, ".", ",")
+}
+
 type AkipControls struct {
 	Address    string     `json:"address"`
 	TimeBase   int        `json:"timeBase"`
@@ -278,6 +282,7 @@ func (s *AkipService) StartRegistration(path string) error {
 		return err
 	}
 	w := csv.NewWriter(f)
+	w.Comma = ';'
 	if !fileExists {
 		_ = w.Write([]string{"Date-Time", "Volume ml"})
 		w.Flush()
@@ -393,7 +398,7 @@ func (s *AkipService) writeRegistrationRow() {
 	}
 	_ = s.regWriter.Write([]string{
 		time.Now().Format(time.DateTime),
-		s.volume,
+		formatCSVDecimal(s.volume),
 	})
 	s.regWriter.Flush()
 }
