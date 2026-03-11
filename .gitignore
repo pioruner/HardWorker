@@ -35,6 +35,8 @@ release/*
 !release/versions/
 release/versions/*
 !release/versions/README.md
+apps/visco/hardworker-visco
+apps/akip/akip-wails-prototype
 
 # Editor/IDE
 # .idea/
