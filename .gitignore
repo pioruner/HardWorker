@@ -19,6 +19,7 @@ profile.cov
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+node_modules/
 
 # Go workspace file
 go.work
@@ -26,6 +27,11 @@ go.work.sum
 
 # env file
 .env
+config/updater.local.json
+config/uploader.local.json
+config/configmaster.local.json
+apps/updater/updater.local.json
+release/
 
 # Editor/IDE
 # .idea/

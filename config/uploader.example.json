@@ -1,0 +1,34 @@
+{
+  "manifest_url": "https://storage.example.com/test-b/hardworker/manifest.json",
+  "http_headers": {},
+  "apps": [
+    {
+      "id": "akip",
+      "label": "AKIP",
+      "platform": "windows",
+      "arch": "amd64",
+      "install_dir": "./app/akip",
+      "executable": "akip-wails-prototype.exe"
+    }
+  ],
+  "publish": {
+    "manifest_url": "https://storage.example.com/test-b/hardworker/manifest.json",
+    "manifest_upload_url": "",
+    "artifact_url_template": "",
+    "artifact_upload_url_template": "",
+    "headers": {}
+  },
+  "storage": {
+    "s3": {
+      "tenant_id": "REPLACE_ME",
+      "endpoint": "https://storage.example.com",
+      "bucket": "test-b",
+      "region": "ru-central-1",
+      "access_key_id": "REPLACE_ME",
+      "secret_access_key": "REPLACE_ME",
+      "prefix": "hardworker",
+      "public_base_url": "https://storage.example.com/test-b",
+      "use_path_style": true
+    }
+  }
+}

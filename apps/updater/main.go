@@ -1,0 +1,43 @@
+package main
+
+import (
+	"embed"
+
+	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/options"
+	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/mac"
+)
+
+//go:embed all:frontend/dist
+var assets embed.FS
+
+func main() {
+	app := NewApp()
+
+	err := wails.Run(&options.App{
+		Title:            "HardWorker Updater",
+		Frameless:        false,
+		Width:            1480,
+		Height:           920,
+		MinWidth:         920,
+		MinHeight:        680,
+		WindowStartState: options.Maximised,
+		AssetServer: &assetserver.Options{
+			Assets: assets,
+		},
+		Mac: &mac.Options{
+			DisableZoom: false,
+		},
+		BackgroundColour: &options.RGBA{R: 20, G: 28, B: 40, A: 1},
+		OnStartup:        app.startup,
+		OnShutdown:       app.shutdown,
+		Bind: []interface{}{
+			app,
+		},
+	})
+
+	if err != nil {
+		println("Error:", err.Error())
+	}
+}

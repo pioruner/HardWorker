@@ -6,8 +6,17 @@ ICON=assets/icon.ico
 
 AKIP_APP_DIR=apps/akip
 VISCO_APP_DIR=apps/visco
+UPLOADER_CONFIG?=release/windows-toolchain-prefilled-cloudru-20260311/uploader/uploader.local.json
+VERSION?=dev
 
-.PHONY: run build clean proto akip-dev akip-build akip-build-windows visco-dev visco-build visco-build-windows windows-build
+define require_version
+	@if [ "$(VERSION)" = "dev" ]; then \
+		echo "Set VERSION, for example: make $@ VERSION=2026.03.11.2"; \
+		exit 1; \
+	fi
+endef
+
+.PHONY: run build clean proto akip-dev akip-build akip-build-windows akip-release-windows visco-dev visco-build visco-build-windows visco-release-windows windows-build windows-release
 
 run:
 	$(GO) run .
@@ -42,6 +51,10 @@ akip-build:
 akip-build-windows:
 	cd $(AKIP_APP_DIR) && $$(go env GOPATH)/bin/wails build -platform windows/amd64 -clean
 
+akip-release-windows: akip-build-windows
+	$(call require_version)
+	$(GO) run ./cmd/release-publish -config $(UPLOADER_CONFIG) -app akip -version $(VERSION) -platform windows -arch amd64 -source ./$(AKIP_APP_DIR)/build/bin/akip-wails-prototype.exe
+
 visco-dev:
 	cd $(VISCO_APP_DIR) && $$(go env GOPATH)/bin/wails dev
 
@@ -51,4 +64,10 @@ visco-build:
 visco-build-windows:
 	cd $(VISCO_APP_DIR) && $$(go env GOPATH)/bin/wails build -platform windows/amd64 -clean
 
+visco-release-windows: visco-build-windows
+	$(call require_version)
+	$(GO) run ./cmd/release-publish -config $(UPLOADER_CONFIG) -app visco -version $(VERSION) -platform windows -arch amd64 -source ./$(VISCO_APP_DIR)/build/bin/hardworker-visco.exe
+
 windows-build: akip-build-windows visco-build-windows
+
+windows-release: akip-release-windows visco-release-windows

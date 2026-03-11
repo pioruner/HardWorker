@@ -1,9 +1,12 @@
 # HardWorker Full File Map
 
 ## Scope
-Этот файл описывает текущую структуру репозитория после разделения Wails-направления на два отдельных приложения:
+Этот файл описывает текущую структуру репозитория после разделения Wails-направления на отдельные прикладные и сервисные desktop-приложения:
 - `apps/akip` - приложение для AKIP
 - `apps/visco` - приложение для вискозиметра
+- `apps/configmaster` - UI для генерации конфигов toolchain
+- `apps/updater` - клиент обновления для конечной машины
+- `cmd/release-publish` - консольный uploader релизов
 
 Legacy-часть (`main.go`, `pkg/*`, `lv/*`) сохранена отдельно и не смешивается с Wails-приложениями.
 
@@ -15,7 +18,7 @@ Legacy-часть (`main.go`, `pkg/*`, `lv/*`) сохранена отдельн
 - `generated`: автогенерация/артефакты
 
 ## A. Root-level files
-- `Makefile`: команды legacy + команды для `apps/akip` и `apps/visco` (`shared`, build)
+- `Makefile`: команды legacy + команды сборки/релиза для приложений (`shared`, build)
 - `README.md`: верхнеуровневое описание репозитория (`shared`, docs)
 - `KODA.md`: инженерные заметки по проекту (`shared`, docs)
 - `go.mod`, `go.sum`, `main.go`: legacy точка входа и зависимости (`legacy`)
@@ -26,6 +29,9 @@ Legacy-часть (`main.go`, `pkg/*`, `lv/*`) сохранена отдельн
 - `docs/wails-akip-blueprint.md`: правила для Wails-приложений (`shared`, architecture)
 - `docs/wails-akip-project-structure.md`: структура Wails AKIP приложения (`wails-akip`, docs)
 - `docs/project-full-file-map.md`: этот файл (`shared`, docs)
+- `docs/updater-release-flow.md`: схема `ConfigMaster -> Uploader -> Updater` (`shared`, docs)
+- `config/*.example.json`: примеры конфигов toolchain (`shared`, config)
+- `pkg/updater/*`: общий код release/update flow (`shared`, updater-core)
 
 ## C. Legacy application (`pkg/*`, `lv/*`)
 
@@ -91,16 +97,40 @@ Legacy-часть (`main.go`, `pkg/*`, `lv/*`) сохранена отдельн
 - Исторический Wails прототип удалён после миграции.
 - Текущая разработка ведётся только в `apps/*`.
 
-## G. Build commands
+## G. Update toolchain
+
+### G1. ConfigMaster (`apps/configmaster/*`)
+- `apps/configmaster/main.go`: Wails entrypoint (`toolchain-configmaster`)
+- `apps/configmaster/app.go`: bindings + выбор папок (`toolchain-configmaster`)
+- `apps/configmaster/service.go`: хранение master config + генерация `uploader.local.json` и `updater.local.json`
+- `apps/configmaster/frontend/src/App.tsx`: UI настройки toolchain
+- `apps/configmaster/frontend/src/App.scss`: стили
+
+### G2. Updater (`apps/updater/*`)
+- `apps/updater/main.go`: Wails entrypoint (`toolchain-updater`)
+- `apps/updater/app.go`: bindings обновления/запуска (`toolchain-updater`)
+- `apps/updater/service.go`: чтение `updater.local.json`, проверка версии, установка, запуск
+- `apps/updater/frontend/src/App.tsx`: клиентский UI без инфраструктурных настроек
+- `apps/updater/frontend/src/App.scss`: стили
+
+### G3. Uploader (`cmd/release-publish/*`)
+- `cmd/release-publish/main.go`: CLI публикации релиза
+- `cmd/release-publish/README.md`: инструкция по использованию CLI
+
+## H. Build commands
 - `make akip-dev`, `make akip-build`
 - `make visco-dev`, `make visco-build`
+- `make akip-release-windows VERSION=...`
+- `make visco-release-windows VERSION=...`
+- `make windows-release VERSION=...`
 
-## H. Impact map
+## I. Impact map
 - Изменения AKIP UI/контракта: `apps/akip/app.go`, `apps/akip/akip_service.go`, `apps/akip/frontend/src/*`
 - Изменения VISCO UI/контракта: `apps/visco/app.go`, `apps/visco/visko_service.go`, `apps/visco/frontend/src/*`
 - Лог-модуль обязателен в обоих приложениях: `apps/*/logs.go` + вкладка `Логи` на frontend
+- Изменения update toolchain: `apps/configmaster/*`, `apps/updater/*`, `cmd/release-publish/*`, `pkg/updater/*`, `config/*.example.json`
 
-## I. Safe-to-regenerate
+## J. Safe-to-regenerate
 - `apps/*/frontend/wailsjs/**`
 - `apps/*/build/**` (шаблоны/артефакты)
 - `apps/*/frontend/dist/**`

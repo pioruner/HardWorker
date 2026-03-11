@@ -1,0 +1,25 @@
+html {
+  background-color: #121923;
+  color: #f3f6fb;
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  color: #f3f6fb;
+  height: 100%;
+  overflow: hidden;
+  font-family: "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+#root {
+  height: 100%;
+}
+
+@font-face {
+  font-family: "Nunito";
+  font-style: normal;
+  font-weight: 400;
+  src: local(""), url("assets/fonts/nunito-v16-latin-regular.woff2") format("woff2");
+}
+
