@@ -59,6 +59,7 @@ export namespace main {
 	    curU1: string;
 	    curU2: string;
 	    curTemp: string;
+	    curCmd: string;
 	    selT1: string;
 	    selT2: string;
 	    selU1: string;
@@ -81,6 +82,7 @@ export namespace main {
 	        this.curU1 = source["curU1"];
 	        this.curU2 = source["curU2"];
 	        this.curTemp = source["curTemp"];
+	        this.curCmd = source["curCmd"];
 	        this.selT1 = source["selT1"];
 	        this.selT2 = source["selT2"];
 	        this.selU1 = source["selU1"];

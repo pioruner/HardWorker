@@ -339,16 +339,43 @@
 }
 
 .visco-view {
-  grid-template-rows: auto auto minmax(280px, 1fr) auto minmax(180px, auto);
+  height: 100%;
+  min-height: 0;
+  display: block;
 }
 
-.visco-top {
-  grid-template-columns: minmax(260px, 1fr) auto auto auto;
-  align-items: end;
+.visco-main {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 440px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.visco-sidebar {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px;
+}
+
+.visco-sidebar-top {
+  display: grid;
+  gap: 10px;
+}
+
+.visco-sidebar-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .visco-metrics {
-  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  padding: 0;
+  border: 0;
+  background: transparent;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .visco-bottom {
@@ -366,7 +393,7 @@
 
 .visco-table-wrap {
   min-height: 0;
-  max-height: 260px;
+  height: 100%;
   overflow: auto;
   border: 1px solid var(--stroke);
   border-radius: 8px;
@@ -406,7 +433,7 @@
 
 .visco-charts {
   min-height: 0;
-  height: 100%;
+  flex: 1 1 auto;
   display: grid;
   grid-template-rows: repeat(3, minmax(0, 1fr));
   gap: 8px;
@@ -416,10 +443,27 @@
   min-height: 0;
 }
 
+.visco-workspace {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+}
+
 @media (max-width: 1200px) {
-  .visco-top,
+  .visco-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .visco-sidebar {
+    grid-template-rows: auto auto minmax(220px, 1fr);
+  }
+
   .visco-metrics,
-  .visco-bottom {
+  .visco-bottom,
+  .visco-sidebar-actions {
     grid-template-columns: minmax(0, 1fr);
   }
 }

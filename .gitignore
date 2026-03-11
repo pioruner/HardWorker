@@ -31,7 +31,10 @@ config/updater.local.json
 config/uploader.local.json
 config/configmaster.local.json
 apps/updater/updater.local.json
-release/
+release/*
+!release/versions/
+release/versions/*
+!release/versions/README.md
 
 # Editor/IDE
 # .idea/

@@ -38,6 +38,7 @@ type ViskoSnapshot struct {
 	CurU1        string     `json:"curU1"`
 	CurU2        string     `json:"curU2"`
 	CurTemp      string     `json:"curTemp"`
+	CurCmd       string     `json:"curCmd"`
 	SelT1        string     `json:"selT1"`
 	SelT2        string     `json:"selT2"`
 	SelU1        string     `json:"selU1"`
@@ -61,6 +62,7 @@ type ViskoService struct {
 	curU1        string
 	curU2        string
 	curTemp      string
+	curCmd       string
 	selT1        string
 	selT2        string
 	selU1        string
@@ -88,6 +90,7 @@ func NewViskoService(id string) *ViskoService {
 		curU1:        "0.00",
 		curU2:        "0.00",
 		curTemp:      "0.0",
+		curCmd:       "0",
 		selT1:        "0",
 		selT2:        "0",
 		selU1:        "0.00",
@@ -279,6 +282,7 @@ func (s *ViskoService) GetSnapshot() ViskoSnapshot {
 		CurU1:        s.curU1,
 		CurU2:        s.curU2,
 		CurTemp:      s.curTemp,
+		CurCmd:       s.curCmd,
 		SelT1:        s.selT1,
 		SelT2:        s.selT2,
 		SelU1:        s.selU1,
@@ -403,10 +407,11 @@ func (s *ViskoService) readCycle(conn *modbus.ModbusClient) error {
 	s.curU1 = fmt.Sprintf("%.2f", u1)
 	s.curU2 = fmt.Sprintf("%.2f", u2)
 	s.curTemp = fmt.Sprintf("%.1f", temp)
+	s.curCmd = strconv.FormatUint(uint64(cmd), 10)
 	s.connected = true
 	s.lastResponse = "Read ok"
 
-	if s.lastCmd == 0 && cmd > 0 {
+	if s.lastCmd == 0 && cmd > 0 && t1 >= 100 && t2 >= 100 {
 		s.rows = append(s.rows, ViskoRow{T1: float64(t1), T2: float64(t2), U1: float64(u1), U2: float64(u2), Temp: float64(temp)})
 		if len(s.rows) > 5000 {
 			s.rows = s.rows[len(s.rows)-5000:]

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactECharts from "echarts-for-react";
 import "./App.scss";
 import { ApplyControls, ClearRows, ExportRows, GetLogs, GetSnapshot, SetCursorIndex } from "../wailsjs/go/main/App";
@@ -22,6 +22,7 @@ type ViskoSnapshot = {
   curU1: string;
   curU2: string;
   curTemp: string;
+  curCmd: string;
   selT1: string;
   selT2: string;
   selU1: string;
@@ -46,6 +47,7 @@ const defaultSnapshot: ViskoSnapshot = {
   curU1: "0.00",
   curU2: "0.00",
   curTemp: "0.0",
+  curCmd: "0",
   selT1: "0",
   selT2: "0",
   selU1: "0.00",
@@ -85,6 +87,13 @@ function App() {
   const [view, setView] = useState<"visco" | "logs">("visco");
   const [logsPaused, setLogsPaused] = useState(false);
   const [logsUiOffset, setLogsUiOffset] = useState(0);
+  const timeChartRef = useRef<ReactECharts>(null);
+  const voltageChartRef = useRef<ReactECharts>(null);
+  const tempChartRef = useRef<ReactECharts>(null);
+  const timeChartHostRef = useRef<HTMLDivElement>(null);
+  const voltageChartHostRef = useRef<HTMLDivElement>(null);
+  const tempChartHostRef = useRef<HTMLDivElement>(null);
+  const stabilizeTimerRef = useRef<number | null>(null);
   const [snapshot, setSnapshot] = useState<ViskoSnapshot>(defaultSnapshot);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [addressDraft, setAddressDraft] = useState(defaultSnapshot.address);
@@ -226,6 +235,85 @@ function App() {
 
   const visibleLogs = logs.slice(logsUiOffset);
 
+  const resizeChart = useCallback((host: HTMLDivElement | null, chartRef: React.RefObject<ReactECharts | null>) => {
+    const chart = chartRef.current?.getEchartsInstance();
+    if (!host || !chart) {
+      return;
+    }
+    const width = host.clientWidth;
+    const height = host.clientHeight;
+    if (width <= 0 || height <= 0) {
+      return;
+    }
+    chart.resize({ width, height });
+  }, []);
+
+  const forceChartsResize = useCallback(() => {
+    resizeChart(timeChartHostRef.current, timeChartRef);
+    resizeChart(voltageChartHostRef.current, voltageChartRef);
+    resizeChart(tempChartHostRef.current, tempChartRef);
+  }, [resizeChart]);
+
+  const startChartStabilization = useCallback(() => {
+    if (stabilizeTimerRef.current !== null) {
+      window.clearInterval(stabilizeTimerRef.current);
+      stabilizeTimerRef.current = null;
+    }
+    let ticks = 0;
+    stabilizeTimerRef.current = window.setInterval(() => {
+      forceChartsResize();
+      ticks += 1;
+      if (ticks >= 20) {
+        if (stabilizeTimerRef.current !== null) {
+          window.clearInterval(stabilizeTimerRef.current);
+          stabilizeTimerRef.current = null;
+        }
+      }
+    }, 100);
+  }, [forceChartsResize]);
+
+  useEffect(() => {
+    const hosts = [timeChartHostRef.current, voltageChartHostRef.current, tempChartHostRef.current].filter(
+      (host): host is HTMLDivElement => host !== null,
+    );
+    if (hosts.length === 0) {
+      return;
+    }
+
+    const observer = new ResizeObserver(() => {
+      forceChartsResize();
+    });
+    hosts.forEach((host) => observer.observe(host));
+
+    return () => {
+      observer.disconnect();
+      if (stabilizeTimerRef.current !== null) {
+        window.clearInterval(stabilizeTimerRef.current);
+        stabilizeTimerRef.current = null;
+      }
+    };
+  }, [forceChartsResize]);
+
+  useEffect(() => {
+    if (view !== "visco") {
+      return;
+    }
+    const resize = () => forceChartsResize();
+    const raf = window.requestAnimationFrame(resize);
+    const t1 = window.setTimeout(resize, 120);
+    const t2 = window.setTimeout(resize, 380);
+    startChartStabilization();
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      if (stabilizeTimerRef.current !== null) {
+        window.clearInterval(stabilizeTimerRef.current);
+        stabilizeTimerRef.current = null;
+      }
+    };
+  }, [forceChartsResize, startChartStabilization, view]);
+
   return (
     <main className="akip-layout">
       <header className="panel panel-mode">
@@ -262,95 +350,102 @@ function App() {
         </section>
       ) : (
         <div className="akip-view visco-view">
-          <header className="panel panel-top visco-top">
-            <label className="field">
-              <span>Адрес прибора</span>
-              <input value={addressDraft} onChange={(e) => setAddressDraft(e.target.value)} onBlur={onApplyAddress} />
-            </label>
-            <div className={`status ${snapshot.connected ? "is-online" : "is-offline"}`}>
-              {snapshot.connected ? "Связь: онлайн" : "Связь: оффлайн"}
-            </div>
-            <button className="toggle" onClick={onExportRows}>Сохранить CSV</button>
-            <button className="toggle" onClick={onClearRows}>Очистить</button>
-          </header>
+          <section className="visco-main">
+            <aside className="panel visco-sidebar">
+              <header className="visco-sidebar-top">
+                <label className="field">
+                  <span>Адрес прибора</span>
+                  <input value={addressDraft} onChange={(e) => setAddressDraft(e.target.value)} onBlur={onApplyAddress} />
+                </label>
+                <div className={`status ${snapshot.connected ? "is-online" : "is-offline"}`}>
+                  {snapshot.connected ? "Связь: онлайн" : "Связь: оффлайн"}
+                </div>
+                <div className="visco-sidebar-actions">
+                  <button className="toggle" onClick={onExportRows}>Сохранить CSV</button>
+                  <button className="toggle" onClick={onClearRows}>Очистить</button>
+                </div>
+              </header>
 
-          <section className="panel panel-metrics visco-metrics">
-            <div className="metric"><span>T1</span><strong>{snapshot.curT1}</strong></div>
-            <div className="metric"><span>T2</span><strong>{snapshot.curT2}</strong></div>
-            <div className="metric"><span>U1</span><strong>{snapshot.curU1}</strong></div>
-            <div className="metric"><span>U2</span><strong>{snapshot.curU2}</strong></div>
-            <div className="metric"><span>Temp</span><strong>{snapshot.curTemp}</strong></div>
-            <div className="response-row">
-              <span>Последний ответ</span>
-              <input className="response-box" readOnly value={snapshot.lastResponse} title={snapshot.lastResponse} />
-            </div>
-          </section>
+              <section className="panel panel-metrics visco-metrics">
+                <div className="metric"><span>T1</span><strong>{snapshot.curT1}</strong></div>
+                <div className="metric"><span>T2</span><strong>{snapshot.curT2}</strong></div>
+                <div className="metric"><span>U1</span><strong>{snapshot.curU1}</strong></div>
+                <div className="metric"><span>U2</span><strong>{snapshot.curU2}</strong></div>
+                <div className="metric"><span>Temp</span><strong>{snapshot.curTemp}</strong></div>
+                <div className="metric"><span>CMD</span><strong>{snapshot.curCmd}</strong></div>
+                <div className="response-row">
+                  <span>Последний ответ</span>
+                  <input className="response-box" readOnly value={snapshot.lastResponse} title={snapshot.lastResponse} />
+                </div>
+              </section>
 
-          <section className="panel panel-chart">
-            <div className="panel-title">Тренды VISCO</div>
-            <div className="visco-charts">
-              <div className="chart-host visco-chart">
-                <ReactECharts option={timeChartOptions} style={{ height: "100%", width: "100%" }} />
+              <section className="visco-table-panel">
+                <div className="panel-title">Таблица измерений</div>
+                <div className="visco-table-wrap">
+                  <table className="visco-table">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>T1</th>
+                        <th>T2</th>
+                        <th>U1</th>
+                        <th>U2</th>
+                        <th>Temp</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((r, i) => (
+                        <tr key={i} className={i === snapshot.cursorIndex ? "is-active" : ""}>
+                          <td>{i}</td>
+                          <td>{r.t1.toFixed(0)}</td>
+                          <td>{r.t2.toFixed(0)}</td>
+                          <td>{r.u1.toFixed(2)}</td>
+                          <td>{r.u2.toFixed(2)}</td>
+                          <td>{r.temp.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </aside>
+
+            <section className="panel visco-workspace">
+              <div className="panel-title">Тренды VISCO</div>
+              <div className="visco-charts">
+                <div className="chart-host visco-chart" ref={timeChartHostRef}>
+                  <ReactECharts ref={timeChartRef} option={timeChartOptions} style={{ height: "100%", width: "100%" }} />
+                </div>
+                <div className="chart-host visco-chart" ref={voltageChartHostRef}>
+                  <ReactECharts ref={voltageChartRef} option={voltageChartOptions} style={{ height: "100%", width: "100%" }} />
+                </div>
+                <div className="chart-host visco-chart" ref={tempChartHostRef}>
+                  <ReactECharts ref={tempChartRef} option={tempChartOptions} style={{ height: "100%", width: "100%" }} />
+                </div>
               </div>
-              <div className="chart-host visco-chart">
-                <ReactECharts option={voltageChartOptions} style={{ height: "100%", width: "100%" }} />
-              </div>
-              <div className="chart-host visco-chart">
-                <ReactECharts option={tempChartOptions} style={{ height: "100%", width: "100%" }} />
-              </div>
-            </div>
-          </section>
 
-          <section className="panel panel-bottom visco-bottom">
-            <label className="slider-wrap">
-              <span>Курсор записи</span>
-              <input
-                type="range"
-                min={0}
-                max={Math.max(0, rows.length - 1)}
-                step={1}
-                value={Math.min(snapshot.cursorIndex, Math.max(0, rows.length - 1))}
-                onChange={(e) => void onCursorChange(Number(e.target.value))}
-                disabled={rows.length === 0}
-              />
-              <b>{snapshot.cursorIndex}</b>
-            </label>
+              <section className="panel panel-bottom visco-bottom">
+                <label className="slider-wrap">
+                  <span>Курсор записи</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={Math.max(0, rows.length - 1)}
+                    step={1}
+                    value={Math.min(snapshot.cursorIndex, Math.max(0, rows.length - 1))}
+                    onChange={(e) => void onCursorChange(Number(e.target.value))}
+                    disabled={rows.length === 0}
+                  />
+                  <b>{snapshot.cursorIndex}</b>
+                </label>
 
-            <div className="metric"><span>T1 (cursor)</span><strong>{snapshot.selT1}</strong></div>
-            <div className="metric"><span>T2 (cursor)</span><strong>{snapshot.selT2}</strong></div>
-            <div className="metric"><span>U1 (cursor)</span><strong>{snapshot.selU1}</strong></div>
-            <div className="metric"><span>U2 (cursor)</span><strong>{snapshot.selU2}</strong></div>
-            <div className="metric"><span>Temp (cursor)</span><strong>{snapshot.selTemp}</strong></div>
-          </section>
-
-          <section className="panel visco-table-panel">
-            <div className="panel-title">Таблица измерений</div>
-            <div className="visco-table-wrap">
-              <table className="visco-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>T1</th>
-                    <th>T2</th>
-                    <th>U1</th>
-                    <th>U2</th>
-                    <th>Temp</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((r, i) => (
-                    <tr key={i} className={i === snapshot.cursorIndex ? "is-active" : ""}>
-                      <td>{i}</td>
-                      <td>{r.t1.toFixed(0)}</td>
-                      <td>{r.t2.toFixed(0)}</td>
-                      <td>{r.u1.toFixed(2)}</td>
-                      <td>{r.u2.toFixed(2)}</td>
-                      <td>{r.temp.toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                <div className="metric"><span>T1 (cursor)</span><strong>{snapshot.selT1}</strong></div>
+                <div className="metric"><span>T2 (cursor)</span><strong>{snapshot.selT2}</strong></div>
+                <div className="metric"><span>U1 (cursor)</span><strong>{snapshot.selU1}</strong></div>
+                <div className="metric"><span>U2 (cursor)</span><strong>{snapshot.selU2}</strong></div>
+                <div className="metric"><span>Temp (cursor)</span><strong>{snapshot.selTemp}</strong></div>
+              </section>
+            </section>
           </section>
         </div>
       )}
