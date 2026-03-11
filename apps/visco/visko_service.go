@@ -19,6 +19,35 @@ func formatCSVFloat(value float64, precision int) string {
 	return strings.ReplaceAll(fmt.Sprintf("%.*f", precision, value), ".", ",")
 }
 
+func meanFloat(values []float64) float64 {
+	if len(values) == 0 {
+		return 0
+	}
+	sum := 0.0
+	for _, value := range values {
+		sum += value
+	}
+	return sum / float64(len(values))
+}
+
+func relativeMeanAbsErrorPercent(values []float64, average float64) float64 {
+	if len(values) == 0 || average == 0 {
+		return 0
+	}
+	sum := 0.0
+	for _, value := range values {
+		sum += absFloat(value - average)
+	}
+	return (sum / float64(len(values)) / absFloat(average)) * 100
+}
+
+func absFloat(value float64) float64 {
+	if value < 0 {
+		return -value
+	}
+	return value
+}
+
 type ViskoRow struct {
 	T1   float64 `json:"t1"`
 	T2   float64 `json:"t2"`
@@ -250,6 +279,43 @@ func (s *ViskoService) ExportCSV(path string) error {
 	w := csv.NewWriter(f)
 	w.Comma = ';'
 	defer w.Flush()
+
+	t1Values := make([]float64, 0, len(rows))
+	t2Values := make([]float64, 0, len(rows))
+	tempValues := make([]float64, 0, len(rows))
+	for _, r := range rows {
+		t1Values = append(t1Values, r.T1)
+		t2Values = append(t2Values, r.T2)
+		tempValues = append(tempValues, r.Temp)
+	}
+
+	t1Avg := meanFloat(t1Values)
+	t2Avg := meanFloat(t2Values)
+	tempAvg := meanFloat(tempValues)
+	t1Err := relativeMeanAbsErrorPercent(t1Values, t1Avg)
+	t2Err := relativeMeanAbsErrorPercent(t2Values, t2Avg)
+
+	if err := w.Write([]string{"Summary", "Value"}); err != nil {
+		return err
+	}
+	if err := w.Write([]string{"T1 average", formatCSVFloat(t1Avg, 2)}); err != nil {
+		return err
+	}
+	if err := w.Write([]string{"T2 average", formatCSVFloat(t2Avg, 2)}); err != nil {
+		return err
+	}
+	if err := w.Write([]string{"T1 error %", formatCSVFloat(t1Err, 2)}); err != nil {
+		return err
+	}
+	if err := w.Write([]string{"T2 error %", formatCSVFloat(t2Err, 2)}); err != nil {
+		return err
+	}
+	if err := w.Write([]string{"Temp average", formatCSVFloat(tempAvg, 2)}); err != nil {
+		return err
+	}
+	if err := w.Write([]string{}); err != nil {
+		return err
+	}
 
 	if err := w.Write([]string{"T1", "T2", "U1", "U2", "Temp"}); err != nil {
 		return err
