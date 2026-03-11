@@ -23,6 +23,11 @@ Debuger - go install github.com/go-delve/delve/cmd/dlv@latest
 - `make visco-release-windows VERSION=...`
 - `make windows-release VERSION=...`
 
+## Fast Context For New Threads
+
+- Canonical project context: [docs/project-context.md](/Users/cim/Documents/Projects/HardWorker/docs/project-context.md)
+- Assistant bootstrap instructions: [AGENTS.md](/Users/cim/Documents/Projects/HardWorker/AGENTS.md)
+
 ## Update Toolchain
 
 Текущая схема:
@@ -36,5 +41,5 @@ Debuger - go install github.com/go-delve/delve/cmd/dlv@latest
 
 Подробности:
 
-- [docs/updater-release-flow.md](/Users/cim/Documents/Projects/HardWorker/docs/updater-release-flow.md)
+- [docs/project-context.md](/Users/cim/Documents/Projects/HardWorker/docs/project-context.md)
 - [cmd/release-publish/README.md](/Users/cim/Documents/Projects/HardWorker/cmd/release-publish/README.md)
