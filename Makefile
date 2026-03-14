@@ -6,6 +6,7 @@ ICON=assets/icon.ico
 
 AKIP_APP_DIR=apps/akip
 VISCO_APP_DIR=apps/visco
+RP40_APP_DIR=apps/rp40
 UPLOADER_CONFIG?=release/windows-toolchain-prefilled-cloudru-20260311/uploader/uploader.local.json
 VERSION?=dev
 VERSION_DIR?=release/versions
@@ -57,7 +58,7 @@ define require_resolved_version
 	fi
 endef
 
-.PHONY: run build clean proto akip-dev akip-build akip-build-windows akip-release-windows visco-dev visco-build visco-build-windows visco-release-windows windows-build windows-release
+.PHONY: run build clean proto akip-dev akip-build akip-build-windows akip-release-windows visco-dev visco-build visco-build-windows visco-release-windows rp40-dev rp40-build rp40-build-windows rp40-release-windows windows-build windows-release
 
 run:
 	$(GO) run .
@@ -111,6 +112,40 @@ visco-release-windows: visco-build-windows
 	$(call require_resolved_version)
 	$(call publish_release,visco,windows,amd64,./$(VISCO_APP_DIR)/build/bin/hardworker-visco.exe,VISCO release)
 
-windows-build: akip-build-windows visco-build-windows
+rp40-dev:
+	cd $(RP40_APP_DIR)/frontend && npm install && cd .. && $$(go env GOPATH)/bin/wails dev -skipbindings
 
-windows-release: akip-release-windows visco-release-windows
+rp40-build:
+	@set -e; \
+	root_dir="$$(pwd)"; \
+	cd $(RP40_APP_DIR)/frontend; \
+	npm install; \
+	npm run build; \
+	cd "$$root_dir"; \
+	rm -rf /tmp/rp40-node_modules; \
+	mv "$$root_dir/$(RP40_APP_DIR)/frontend/node_modules" /tmp/rp40-node_modules; \
+	trap 'mv /tmp/rp40-node_modules "$$root_dir/$(RP40_APP_DIR)/frontend/node_modules"' EXIT; \
+	cd $(RP40_APP_DIR); \
+	$$(go env GOPATH)/bin/wails build -clean -s -skipbindings
+
+rp40-build-windows:
+	@set -e; \
+	root_dir="$$(pwd)"; \
+	cd $(RP40_APP_DIR)/frontend; \
+	npm install; \
+	npm run build; \
+	cd "$$root_dir"; \
+	rm -rf /tmp/rp40-node_modules; \
+	mv "$$root_dir/$(RP40_APP_DIR)/frontend/node_modules" /tmp/rp40-node_modules; \
+	trap 'mv /tmp/rp40-node_modules "$$root_dir/$(RP40_APP_DIR)/frontend/node_modules"' EXIT; \
+	cd $(RP40_APP_DIR); \
+	$$(go env GOPATH)/bin/wails build -platform windows/amd64 -clean -s -skipbindings
+
+rp40-release-windows: rp40-build-windows
+	$(call resolve_version,rp40,windows,amd64)
+	$(call require_resolved_version)
+	$(call publish_release,rp40,windows,amd64,./$(RP40_APP_DIR)/build/bin/hardworker-rp40.exe,RP40 release)
+
+windows-build: akip-build-windows visco-build-windows rp40-build-windows
+
+windows-release: akip-release-windows visco-release-windows rp40-release-windows

@@ -1,0 +1,16 @@
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+html {
+  background: #101418;
+  color: #f4efe7;
+}
+
+body {
+  overflow: hidden;
+  font-family: "Segoe UI", "Arial", sans-serif;
+}

@@ -18,6 +18,14 @@
       "arch": "amd64",
       "install_dir": "./app/visco",
       "executable": "hardworker-visco.exe"
+    },
+    {
+      "id": "rp40",
+      "label": "RP40",
+      "platform": "windows",
+      "arch": "amd64",
+      "install_dir": "./app/rp40",
+      "executable": "hardworker-rp40.exe"
     }
   ],
   "publish": {
