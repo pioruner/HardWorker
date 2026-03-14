@@ -210,9 +210,9 @@ func (data *SampleData) AssessMethod() MethodAssessment {
 		assessment.RecommendedKMD = assessment.Darcy.K
 		assessment.RecommendedBPsi = assessment.Darcy.B
 		assessment.Rationale = []string{
-			"Линейность B-22 на обработанной кривой приемлемая.",
-			"Во full-fit коэффициент b схлопывается относительно стартового значения RP40.",
-			"Образец не относится к диапазону высокой проницаемости, где гибридный вариант обычно полезен.",
+			"B-22 linearity is acceptable on the processed curve",
+			"full fit collapses b relative to the RP40 seed",
+			"sample is not in the high-permeability range where hybrid may be useful",
 		}
 	case (assessment.B22Valid || assessment.B22Marginal) && assessment.FullBCollapsed && assessment.HighPerm && assessment.RelativeKGap >= 0.05 && assessment.RelativeKGap <= 0.20:
 		assessment.Recommendation = "hybrid"
@@ -221,9 +221,9 @@ func (data *SampleData) AssessMethod() MethodAssessment {
 		assessment.RecommendedKMD = assessment.Full.K
 		assessment.RecommendedBPsi = assessment.Darcy.B
 		assessment.Rationale = []string{
-			"B-22 даёт пригодную оценку скольжения, но дарси-подобная аппроксимация неидеальна для K при такой проницаемости.",
-			"Full-fit сохраняет правдоподобный K, хотя b во full-fit схлопывается.",
-			"Расхождение K между методами умеренное, а не критическое.",
+			"B-22 gives a usable slip estimate but the Darcy approximation is not ideal for K at this permeability",
+			"full fit keeps a plausible K while collapsing b",
+			"the K gap between methods is moderate rather than catastrophic",
 		}
 	case assessment.B22Valid && assessment.RelativeKGap <= 0.08:
 		assessment.Recommendation = "b22"
@@ -232,8 +232,8 @@ func (data *SampleData) AssessMethod() MethodAssessment {
 		assessment.RecommendedKMD = assessment.Darcy.K
 		assessment.RecommendedBPsi = assessment.Darcy.B
 		assessment.Rationale = []string{
-			"Линейность B-22 хорошая.",
-			"K из full-fit и B-22 достаточно близки, поэтому предпочтительнее более простая дарси-подобная ветвь.",
+			"B-22 linearity is good",
+			"full and B-22 K are close enough that the simpler Darcy-like branch is preferable",
 		}
 	case !assessment.FullBCollapsed && !assessment.B22Marginal && !assessment.B22Valid:
 		assessment.Recommendation = "full"
@@ -242,8 +242,8 @@ func (data *SampleData) AssessMethod() MethodAssessment {
 		assessment.RecommendedKMD = assessment.Full.K
 		assessment.RecommendedBPsi = assessment.Full.BPsi
 		assessment.Rationale = []string{
-			"На этой кривой линейность B-22 слабая.",
-			"Во full-fit нет явного схлопывания коэффициента b.",
+			"B-22 linearity is weak on this curve",
+			"full fit does not show obvious b collapse",
 		}
 	default:
 		assessment.Recommendation = "review"
@@ -260,8 +260,8 @@ func (data *SampleData) AssessMethod() MethodAssessment {
 			assessment.RecommendedBPsi = assessment.Full.BPsi
 		}
 		assessment.Rationale = []string{
-			"Кривая попадает в неоднозначную зону между дарси-подобным и full-fit поведением.",
-			"Проверьте VT, окно обработки и высоконапорную часть регрессии B-22.",
+			"the curve falls into an ambiguous zone between Darcy-like and full-fit behavior",
+			"review VT, windowing, and the high-pressure end of the B-22 regression",
 		}
 	}
 

@@ -124,16 +124,16 @@ func parseGas(gas string) uint {
 func makeWarnings(assessment MethodAssessment) []string {
 	var warnings []string
 	if assessment.B22Marginal {
-		warnings = append(warnings, "Линейность B-22 пограничная: проверьте высоконапорную часть регрессии.")
+		warnings = append(warnings, "B-22 linearity is marginal; inspect the high-pressure end of the regression.")
 	}
 	if !assessment.B22Valid && !assessment.B22Marginal {
-		warnings = append(warnings, "Линейность B-22 слабая: дарси-подобная интерпретация может быть ненадёжной.")
+		warnings = append(warnings, "B-22 linearity is weak; Darcy-like interpretation may be unreliable.")
 	}
 	if assessment.FullBCollapsed {
-		warnings = append(warnings, "Во full-fit коэффициент b схлопнулся относительно стартового значения RP40; используйте его с осторожностью.")
+		warnings = append(warnings, "Full-fit b collapsed relative to the RP40 seed; treat full-fit b with caution.")
 	}
 	if assessment.Recommendation == "review" {
-		warnings = append(warnings, "Нет однозначной рекомендации по display-результату: проверьте VT, окно preprocessing и обе ветви расчёта.")
+		warnings = append(warnings, "No clear display recommendation; review VT, preprocessing window, and both calculation branches.")
 	}
 	return warnings
 }
