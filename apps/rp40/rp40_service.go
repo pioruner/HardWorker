@@ -163,6 +163,7 @@ var reservoirOptions = map[string]float64{
 	"17.3": 17.3,
 	"233":  233,
 	"1445": 1445,
+	"4876": 4876,
 }
 
 func NewRP40Service() *RP40Service {
@@ -411,7 +412,7 @@ func buildCalculation(inputs RP40Inputs, measurementPath string) (CalculationVie
 		DisplayKMD:      analyzeResult.DisplayKMD,
 		DisplayBPsi:     analyzeResult.DisplayBPsi,
 		DisplayMethod:   analyzeResult.DisplayMethod,
-		DisplayWarnings: append([]string(nil), analyzeResult.DisplayWarnings...),
+		DisplayWarnings: translateAssessmentTexts(analyzeResult.DisplayWarnings),
 		ProcessedCurve:  make([]ChartPoint, 0, len(analyzeResult.ProcessedTimeSec)),
 		B22FitCurve:     make([]ChartPoint, 0, len(analyzeResult.B22.Linearity)),
 		Full: FullFitView{
@@ -438,7 +439,7 @@ func buildCalculation(inputs RP40Inputs, measurementPath string) (CalculationVie
 			BSource:         analyzeResult.Assessment.BSource,
 			RecommendedKMD:  analyzeResult.Assessment.RecommendedKMD,
 			RecommendedBPsi: analyzeResult.Assessment.RecommendedBPsi,
-			Rationale:       append([]string(nil), analyzeResult.Assessment.Rationale...),
+			Rationale:       translateAssessmentTexts(analyzeResult.Assessment.Rationale),
 			B22Valid:        analyzeResult.Assessment.B22Valid,
 			B22Marginal:     analyzeResult.Assessment.B22Marginal,
 			FullBCollapsed:  analyzeResult.Assessment.FullBCollapsed,
@@ -648,6 +649,60 @@ func resolveReservoirVolume(in RP40Inputs) float64 {
 		return in.ReservoirVolumeML
 	}
 	return 0
+}
+
+func translateAssessmentTexts(items []string) []string {
+	if len(items) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(items))
+	for _, item := range items {
+		out = append(out, translateAssessmentText(item))
+	}
+	return out
+}
+
+func translateAssessmentText(value string) string {
+	switch strings.TrimSpace(value) {
+	case "B-22 linearity is acceptable on the processed curve":
+		return "Линейность B-22 на обработанной кривой приемлемая"
+	case "full-fit b remains close to the RP40 seed":
+		return "Параметр b у full-fit остаётся близким к начальному RP40-значению"
+	case "high-permeability regime favors the B-22 display value":
+		return "Для высокопроницаемого режима предпочтительно отображать значение по B-22"
+	case "B-22 linearity is marginal but still usable":
+		return "Линейность B-22 пограничная, но ещё пригодна для использования"
+	case "full-fit keeps a stable b estimate for display":
+		return "Full-fit сохраняет устойчивую оценку b для отображения"
+	case "present permeability from B-22 and b from the full fit":
+		return "Показывайте проницаемость по B-22, а b по full-fit"
+	case "B-22 linearity is good":
+		return "Линейность B-22 хорошая"
+	case "the B-22 estimate is consistent with the full fit":
+		return "Оценка B-22 согласуется с full-fit"
+	case "use the B-22 branch for both permeability and b":
+		return "Используйте ветвь B-22 и для проницаемости, и для b"
+	case "B-22 linearity is weak on this curve":
+		return "Линейность B-22 на этой кривой слабая"
+	case "full-fit remains physically plausible and stable":
+		return "Full-fit остаётся физически правдоподобным и устойчивым"
+	case "prefer the full-fit branch for display":
+		return "Для отображения предпочтительна ветвь full-fit"
+	case "neither branch is clearly robust":
+		return "Ни одна из ветвей не выглядит достаточно надёжной"
+	case "review VT, windowing, and the high-pressure end of the B-22 regression":
+		return "Проверьте Vt, окно обработки и высоконапорную часть регрессии B-22"
+	case "No clear display recommendation; review VT, preprocessing window, and both calculation branches.":
+		return "Нет однозначной рекомендации для отображения; проверьте Vt, окно preprocessing и обе ветви расчёта."
+	case "B-22 linearity is marginal; inspect the high-pressure end of the regression.":
+		return "Линейность B-22 пограничная; проверьте высоконапорную часть регрессии."
+	case "B-22 linearity is weak; Darcy-like interpretation may be unreliable.":
+		return "Линейность B-22 слабая; интерпретация в духе Darcy может быть ненадёжной."
+	case "Full-fit b collapsed relative to the RP40 seed; treat full-fit b with caution.":
+		return "Параметр b у full-fit схлопнулся относительно исходного RP40-значения; используйте full-fit b с осторожностью."
+	default:
+		return value
+	}
 }
 
 func splitTSV(line string) []string {

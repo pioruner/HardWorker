@@ -215,6 +215,23 @@ function sourceLabel(value: string | undefined): string {
   }
 }
 
+function compactPathLabel(value: string | undefined): string {
+  if (!value) {
+    return "Не загружен";
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "Не загружен";
+  }
+
+  const normalized = trimmed.replaceAll("\\", "/");
+  const parts = normalized.split("/").filter(Boolean);
+  const fileName = parts[parts.length - 1] ?? trimmed;
+
+  return parts.length <= 1 ? fileName : `.../${fileName}`;
+}
+
 function App() {
   const [snapshot, setSnapshot] = useState<Snapshot>(defaultSnapshot);
   const [busy, setBusy] = useState(false);
@@ -393,7 +410,6 @@ function App() {
     <div className="rp40-layout">
       <header className="hero panel">
         <div>
-          <p className="eyebrow">HardWorker / RP40</p>
           <h1>Калькулятор газопроницаемости</h1>
           <p className="hero-copy">
             Загрузите паспорт, загрузите замер, выберите образец и объём Vt.
@@ -412,12 +428,12 @@ function App() {
             <div className="section-title">Источники</div>
             <div className="path-grid">
               <div>
-                <span>Паспорт</span>
-                <strong>{snapshot.PassportFilePath || "Не загружен"}</strong>
+                <span>Таблицы</span>
+                <strong title={snapshot.PassportFilePath || ""}>{compactPathLabel(snapshot.PassportFilePath)}</strong>
               </div>
               <div>
                 <span>Файл замера</span>
-                <strong>{snapshot.MeasurementFilePath || "Не загружен"}</strong>
+                <strong title={snapshot.MeasurementFilePath || ""}>{compactPathLabel(snapshot.MeasurementFilePath)}</strong>
               </div>
             </div>
             {snapshot.LastError ? <div className="error-box">{snapshot.LastError}</div> : null}
@@ -493,6 +509,7 @@ function App() {
                   <option value="17.3">17,3</option>
                   <option value="233">233</option>
                   <option value="1445">1445</option>
+                  <option value="4876">4876</option>
                   <option value="custom">Custom</option>
                 </select>
               </label>
@@ -551,9 +568,9 @@ function App() {
             <div className="passport-card">
               <div><span>Последняя строка</span><strong>{selectedSample.Timestamp || "—"}</strong></div>
               <div><span>Повторений в файле</span><strong>{selectedSample.SourceOccurrences ?? 0}</strong></div>
-              <div><span>Kгаз другой установки</span><strong>{formatNumber(selectedSample.KGasMD)}</strong></div>
-              <div><span>Kкл другой установки</span><strong>{formatNumber(selectedSample.KKlinkenbergMD)}</strong></div>
-              <div><span>b другой установки, psi</span><strong>{formatNumber(selectedSample.BPsi)}</strong></div>
+              <div><span>Kгаз таблицы</span><strong>{formatNumber(selectedSample.KGasMD)}</strong></div>
+              <div><span>Kкл таблицы</span><strong>{formatNumber(selectedSample.KKlinkenbergMD)}</strong></div>
+              <div><span>b таблицы, psi</span><strong>{formatNumber(selectedSample.BPsi)}</strong></div>
               <div><span>Объем пор, см3</span><strong>{formatNumber(selectedSample.PoreVolumeCM3)}</strong></div>
             </div>
           </div>

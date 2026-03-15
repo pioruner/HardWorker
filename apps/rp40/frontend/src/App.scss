@@ -20,11 +20,11 @@
 
 .rp40-layout {
   height: 100vh;
-  padding: 18px;
+  padding: 14px;
   box-sizing: border-box;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  gap: 14px;
+  gap: 12px;
   color: var(--text);
   background:
     radial-gradient(circle at top left, rgba(234, 185, 95, 0.18), transparent 28%),
@@ -41,29 +41,21 @@
 }
 
 .hero {
-  padding: 20px 24px;
+  padding: 14px 18px;
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  gap: 16px;
-}
-
-.eyebrow {
-  margin: 0 0 6px;
-  color: var(--accent);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-size: 12px;
+  gap: 12px;
 }
 
 .hero h1 {
   margin: 0;
-  font-size: 34px;
+  font-size: 28px;
   font-weight: 700;
 }
 
 .hero-copy {
-  margin: 10px 0 0;
+  margin: 6px 0 0;
   max-width: 720px;
   color: var(--muted);
 }
@@ -103,7 +95,7 @@
   min-height: 0;
   display: grid;
   grid-template-columns: 460px minmax(0, 1fr);
-  gap: 14px;
+  gap: 12px;
 }
 
 .left-column,
@@ -115,7 +107,7 @@
 .left-column {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   overflow: auto;
   padding-right: 4px;
 }
@@ -123,7 +115,7 @@
 .right-column {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   overflow: auto;
   padding-right: 4px;
 }
@@ -137,7 +129,7 @@
 }
 
 .section-title {
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   color: var(--muted);
   font-size: 13px;
   text-transform: uppercase;
@@ -158,8 +150,8 @@
 .metric strong {
   display: block;
   margin-top: 4px;
-  font-size: 18px;
-  word-break: break-word;
+  font-size: 17px;
+  min-width: 0;
 }
 
 .path-grid span,
@@ -178,6 +170,20 @@
   border: 1px solid rgba(255, 141, 127, 0.22);
   color: #ffd1cb;
   min-height: 20px;
+}
+
+.path-grid {
+  align-items: start;
+}
+
+.path-grid > div {
+  min-width: 0;
+}
+
+.path-grid strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .form-grid {
@@ -211,6 +217,33 @@
   outline: none;
 }
 
+.field select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  color-scheme: dark;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.03)),
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position:
+    0 0,
+    calc(100% - 18px) 17px,
+    calc(100% - 12px) 17px;
+  background-size:
+    auto,
+    6px 6px,
+    6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 34px;
+}
+
+.field select option,
+.field select optgroup {
+  background: #1d252d;
+  color: var(--text);
+}
+
 .field input:focus,
 .field select:focus {
   border-color: var(--accent);
@@ -224,8 +257,8 @@
 }
 
 .advanced-panel {
-  margin-top: 14px;
-  padding-top: 14px;
+  margin-top: 12px;
+  padding-top: 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -247,7 +280,7 @@
 }
 
 .passport-card {
-  margin-top: 14px;
+  margin-top: 12px;
 }
 
 .metrics-panel {
