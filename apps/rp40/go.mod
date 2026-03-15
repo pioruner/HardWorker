@@ -19,7 +19,7 @@ require (
 	github.com/leaanthony/u v1.1.1 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/pioruner/gcalc v0.0.0
+	github.com/pioruner/gcalc v0.0.0-20260314200733-3ad679b1fb7f
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
@@ -34,5 +34,3 @@ require (
 	golang.org/x/sys v0.39.0 // indirect
 	golang.org/x/text v0.32.0
 )
-
-replace github.com/pioruner/gcalc => ../../third_party/gcalc
