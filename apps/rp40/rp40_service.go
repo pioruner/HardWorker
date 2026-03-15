@@ -668,8 +668,18 @@ func translateAssessmentText(value string) string {
 		return "Линейность B-22 на обработанной кривой приемлемая"
 	case "full-fit b remains close to the RP40 seed":
 		return "Параметр b у full-fit остаётся близким к начальному RP40-значению"
+	case "full fit collapses b relative to the RP40 seed":
+		return "Full-fit заметно занижает параметр b относительно исходного RP40-значения"
 	case "high-permeability regime favors the B-22 display value":
 		return "Для высокопроницаемого режима предпочтительно отображать значение по B-22"
+	case "sample is not in the high-permeability range where hybrid may be useful":
+		return "Образец не относится к диапазону высокой проницаемости, где гибридный режим обычно полезен"
+	case "B-22 gives a usable slip estimate but the Darcy approximation is not ideal for K at this permeability":
+		return "B-22 даёт пригодную оценку скольжения, но аппроксимация Darcy для K при такой проницаемости неидеальна"
+	case "full fit keeps a plausible K while collapsing b":
+		return "Full-fit сохраняет правдоподобное значение K, но при этом занижает b"
+	case "the K gap between methods is moderate rather than catastrophic":
+		return "Расхождение K между методами умеренное, а не критическое"
 	case "B-22 linearity is marginal but still usable":
 		return "Линейность B-22 пограничная, но ещё пригодна для использования"
 	case "full-fit keeps a stable b estimate for display":
@@ -678,18 +688,24 @@ func translateAssessmentText(value string) string {
 		return "Показывайте проницаемость по B-22, а b по full-fit"
 	case "B-22 linearity is good":
 		return "Линейность B-22 хорошая"
+	case "full and B-22 K are close enough that the simpler Darcy-like branch is preferable":
+		return "Значения K по full-fit и B-22 достаточно близки, поэтому предпочтительна более простая Darcy-подобная ветвь"
 	case "the B-22 estimate is consistent with the full fit":
 		return "Оценка B-22 согласуется с full-fit"
 	case "use the B-22 branch for both permeability and b":
 		return "Используйте ветвь B-22 и для проницаемости, и для b"
 	case "B-22 linearity is weak on this curve":
 		return "Линейность B-22 на этой кривой слабая"
+	case "full fit does not show obvious b collapse":
+		return "Full-fit не показывает явного схлопывания параметра b"
 	case "full-fit remains physically plausible and stable":
 		return "Full-fit остаётся физически правдоподобным и устойчивым"
 	case "prefer the full-fit branch for display":
 		return "Для отображения предпочтительна ветвь full-fit"
 	case "neither branch is clearly robust":
 		return "Ни одна из ветвей не выглядит достаточно надёжной"
+	case "the curve falls into an ambiguous zone between Darcy-like and full-fit behavior":
+		return "Кривая попадает в неоднозначную зону между Darcy-подобным и full-fit поведением"
 	case "review VT, windowing, and the high-pressure end of the B-22 regression":
 		return "Проверьте Vt, окно обработки и высоконапорную часть регрессии B-22"
 	case "No clear display recommendation; review VT, preprocessing window, and both calculation branches.":
